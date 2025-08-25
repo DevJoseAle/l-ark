@@ -1,0 +1,10 @@
+//
+//  Config.prod.xcconfig
+//  L-ark
+//
+//  Created by Jose Rodriguez on 08-09-25.
+//
+
+SUPABASE_SCHEME = https
+SUPABASE_HOST   = molypxswmdkxbyzekztl.supabase.co
+SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vbHlweHN3bWRreGJ5emVrenRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNzQwOTAsImV4cCI6MjA3Mjc1MDA5MH0.hFyXSfWKVgOj7hrCd65jS28fr0MrYC4JIhFojM57DYw
