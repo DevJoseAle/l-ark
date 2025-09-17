@@ -14,7 +14,7 @@ struct MyCampaignView: View {
     @State private var images: [CampaignImage] = []
     var body: some View {
         VStack(alignment: .leading) {
-            Text("Titulo de la campaña: \(campaign.ownCampaign?.title ?? "No hay un titulo")") 
+            Text("Titulo de la campaña: \(campaign.ownCampaign?.title ?? "No hay un titulo!!")")
                 .padding(.horizontal)
 
             content
