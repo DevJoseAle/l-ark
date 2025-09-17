@@ -8,143 +8,224 @@
 import SwiftUI
 
 struct MyCampaignView: View {
+    @EnvironmentObject private var campaign: SupabaseCampaignManager
+    @StateObject private var vm = MyCampaignViewModel()
     private var supabase = SupabaseClientManager.shared.client
     @State private var images: [CampaignImage] = []
     var body: some View {
         VStack(alignment: .leading) {
-            CampaignImageSlider(images: images)
-                .frame(height: 320)
-            Spacer()
-            Spacer()
+            Text("Titulo de la campaña: \(campaign.ownCampaign?.title ?? "No hay un titulo")") 
+                .padding(.horizontal)
 
+            content
+            Spacer()
+            Spacer()
+            
         }
         .navigationBarTitleDisplayMode(.large)
         .navigationTitle(Text("Mi Campaña"))
         .toolbar {
-            HStack(alignment: .center) {
-                Button(
-                    action: {
+            ToolbarEditButton(){
+                print("desde aqui")
+            }
+        }
+        .task{
+            await vm.loadImages()
+        }
+        
+    }
+    @ViewBuilder
+    private var content: some View{
+        switch vm.viewState {
+        case .loading, .idle:
+            LoadingView()
+        case .loaded:
+            CampaignImageSlider(images: images)
+                .frame(height: 320)
+        case .imgError(let displayableError):
+            ErrorViewCampaign(error: displayableError){
+                Task{}
+            }
+        }
+    }
+}
 
-                    },
-                    label: {
-                        HStack(alignment: .center) {
 
-                            Text("Editar")
-                            Image(systemName: "pencil")
-                        }
+//MARK: TollbarEditBtn
+private struct ToolbarEditButton: View {
+    
+    let action: () -> Void
+    
+    var body: some View{
+        HStack(alignment: .center) {
+            Button(
+                action: action,
+                label: {
+                    HStack(alignment: .center) {
+                        Text("Editar")
+                        Image(systemName: "pencil")
                     }
-                )
-            }
+                }
+            )
         }
-        .onAppear {
-            Task {
-                await getImages()
-            }
-
-        }
-
     }
-
-    private func getImages() async {
-        let id = "200e088f-1a65-45e0-afef-067afc5cb4c7"
-        do {
-            let cImages: [CampaignImage] =
-                try await supabase
-                .from("campaign_images")
-                .select()
-                .eq("campaign_id", value: id)
-                .order("display_order", ascending: true)
-                .execute()
-                .value
-
-            print(cImages)
-            images = cImages
-        } catch let e {
-            print(e)
-        }
-
-    }
-
 }
-
-#Preview {
-    MyCampaignView()
-}
-
-struct CampaignImageSlider: View {
+//MARK: CampaignImageSlider
+private struct CampaignImageSlider: View {
     var images: [CampaignImage]
-    @State var imageID = 0
+    @State var scrollID: Int?
     var body: some View {
-        ZStack {
+        if images.isEmpty {
+            EmptyImageView()
+        }else{
+           
+        }
+        
+    }
+}
+//MARK: EmptyImageView
+private struct EmptyImageView: View {
+    var body : some View{
+        VStack {
+            Text("No hay Imágenes en esta campaña")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.gray.opacity(0.2))
+        .cornerRadius(20)
+        .padding()
+    }
+}
+ //MARK: ImageSliderContent
+private struct ImageSliderContent : View {
+    var images: [CampaignImage]
+    @Binding var scrollID: Int?
+    var body : some View{
+        VStack {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 0) {
                     ForEach(0..<images.count, id: \.self) { index in
                         let image = images[index]
                         VStack {
-                            AsyncImage(url: URL(string: image.imageUrl)) {
-                                image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-
-                                    .frame(
-                                        maxWidth: .infinity,
-                                        maxHeight: .infinity
-                                    )
-
-                                    .clipShape(
-                                        RoundedRectangle(cornerRadius: 20)
-                                    )
-                                    .padding()
-
-                            } placeholder: {
-                                ProgressView()
-                                    .frame(
-                                        maxWidth: .infinity,
-                                        maxHeight: .infinity
-                                    )
-                            }
-
+                            CampaignImageCard(image: image)
                         }
-
+                        
                         .containerRelativeFrame(.horizontal)
                         .scrollTransition(.animated, axis: .horizontal) {
                             content,
                             phase in
                             content
-                                .opacity(phase.isIdentity ? 1 : 0)
+                                .opacity(phase.isIdentity ? 1 : 0.6)
                         }
-
+                        
                     }
-
-                }
-
+                    
+                }.scrollTargetLayout()
+                
             }
             .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $scrollID)
+            if images.count > 1 {
+                ScrollIndicator(
+                    imageCount: images.count,
+                    currentImageIndex: scrollID
+                )
+            }
             
-            ScrollIndicator(
-                imageCount: images.count,
-                currentImageIndex: imageID
-            )
-                .position(x: 110, y:110)
         }
     }
 }
-
-struct ScrollIndicator: View {
+//MARK: CampaignImageCard
+private struct CampaignImageCard: View{
+    let image: CampaignImage
+    var body: some View {
+        AsyncImage(url: URL(string: image.imageUrl)) {
+            image in
+            image
+                .resizable()
+                .scaledToFill()
+            
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
+            
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 20)
+                )
+                .padding()
+            
+        } placeholder: {
+            ProgressView()
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
+        }
+    }
+}
+//MARK: Error View
+private struct ErrorViewCampaign: View {
+    let error: any DisplayableError
+    let retry: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 40))
+                .foregroundColor(.orange)
+            
+            Text("Error al cargar imágenes")
+                .font(.headline)
+            
+            Text(error.localizedDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button("Reintentar", action: retry)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .frame(height: 320)
+    }
+}
+//MARK: SCroll indicator
+private struct ScrollIndicator: View {
     var imageCount: Int
     var currentImageIndex: Int?
     var body: some View {
-        HStack{
-            ForEach(0..<imageCount, id: \.self){ indicator in
+        HStack {
+            ForEach(0..<imageCount, id: \.self) { indicator in
                 let index = currentImageIndex ?? 0
                 Image(systemName: "circle.fill")
-                    .foregroundStyle(index == indicator ? Color.blue : Color.gray)
-                    
+                    .foregroundStyle(
+                        indicator == index ? Color.customWhite : Color.gray
+                    )
+                
             }
         }
         .padding(.all, 5)
         .background(Color.gray.opacity(0.3))
-        
+        .cornerRadius(15)
     }
+}
+//MARK: LoadingView
+private struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .scaleEffect(1.2)
+            Text("Loading...")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity,maxHeight: .infinity)
+    }
+}
+#Preview {
+    NavigationStack{
+        MyCampaignView()
+            .environmentObject(SupabaseCampaignManager.shared)
+    }
+   
 }
