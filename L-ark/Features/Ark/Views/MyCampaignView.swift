@@ -133,13 +133,13 @@ struct CampaignImageSlider: View {
 
 struct ScrollIndicator: View {
     var imageCount: Int
-    var currentImageIndex: Int
+    var currentImageIndex: Int?
     var body: some View {
         HStack{
-            ForEach(0..<imageCount, id: \.self){ index in
+            ForEach(0..<imageCount, id: \.self){ indicator in
                 let index = currentImageIndex ?? 0
                 Image(systemName: "circle.fill")
-                    .foregroundStyle(index == currentImageIndex ? Color.blue : Color.gray)
+                    .foregroundStyle(index == indicator ? Color.blue : Color.gray)
                     
             }
         }
