@@ -20,7 +20,7 @@ struct MainBGContainer<Content: View>: View {
         
         ZStack{
             
-            LinearGradient(colors:[   Color.primaryBackground,Color.secondaryBackground,], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors:[   Color.primaryBackground,Color.secondaryBackground, Color.terciaryBackground], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea(edges: .all)
             
             content

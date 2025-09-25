@@ -9,7 +9,8 @@ struct ArkHomeView: View {
         NavigationStack {
             content
                 .navigationBarBackButtonHidden(true)
-                .navigationBarTitleDisplayMode(.inline)
+                .navigationTitle(Text("Home"))
+                .navigationBarTitleDisplayMode(.large)
         }
         .task {
             await viewModel.loadInitialData(
@@ -51,6 +52,7 @@ struct ArkHomeView: View {
             if campaign.ownCampaign == nil {
                 VStack{
                     Text("Aun no tienes campaña. Debes crear una")
+                    
                 }
             }else{
                 loadedContentWithData
@@ -89,6 +91,7 @@ struct ArkHomeView: View {
             } else {
                 donationsList
             }
+                
         }
     }
     

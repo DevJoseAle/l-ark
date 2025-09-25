@@ -147,9 +147,28 @@ struct LoginView: View {
     }
 }
 
-#Preview {
-    LoginView()
-}
+//#Preview {
+//    struct PreviewWrapper: View {
+//        @StateObject private var appState = AppState()
+//        @StateObject private var authVM: AuthenticationViewModel
+//        
+//        init() {
+//            let state = AppState()
+//            self._appState = StateObject(wrappedValue: state)
+//            self._authVM = StateObject(wrappedValue: AuthenticationViewModel(appState: state))
+//        }
+//        
+//        var body: some View {
+//            NavigationStack {
+//                LoginView()
+//                    .environmentObject(appState)
+//                    .environmentObject(authVM)
+//            }
+//        }
+//    }
+//    
+//    return PreviewWrapper()
+//}
 
 extension String {
     var isValidEmail: Bool {

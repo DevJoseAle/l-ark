@@ -38,7 +38,12 @@ final class SupabaseCampaignManager: ObservableObject {
     @Published var ownCampaign: Campaign?
     @Published var currentError: CampaignError?
     @Published var imageError: CampaignError?
-    @Published var images: [CampaignImage]?
+    @Published var images: [CampaignImage] = []
+    
+    private var isLoadingCampaign = false
+    private var isLoadingImages = false
+    
+    
 
     //MARK: properties
     private let supabase: SupabaseClient
@@ -49,6 +54,10 @@ final class SupabaseCampaignManager: ObservableObject {
     //MARK: methods
 
     func getOwnCampaignAction(_ ownerId: String) async throws {
+        guard !isLoadingCampaign else { return } // ✅ Previene múltiples llamados
+        
+        isLoadingCampaign = true
+        defer { isLoadingCampaign = false }
         do {
             let campaigns: [Campaign] =
                 try await supabase
@@ -61,7 +70,6 @@ final class SupabaseCampaignManager: ObservableObject {
             // No error si está vacío, simplemente nil
             ownCampaign = campaigns.first
             currentError = nil
-            print(ownCampaign)
 
         } catch {
             let error = CampaignError.failed
@@ -71,19 +79,27 @@ final class SupabaseCampaignManager: ObservableObject {
     }
     
     func getImagesFromCampaign(_ campaignId: String) async throws {
-           let id = "200e088f-1a65-45e0-afef-067afc5cb4c7"
+        guard !isLoadingImages else { return }
+        isLoadingImages = true
+        defer { isLoadingImages = false }
+        
            do {
+               print("Antes del from")
                let cImages: [CampaignImage] =
                    try await supabase
                    .from("campaign_images")
                    .select()
-                   .eq("campaign_id", value: id)
+                   .eq("campaign_id", value: campaignId)
                    .order("display_order", ascending: true)
                    .execute()
                    .value
-
+               print("Antes de llenar images")
                images = cImages
+               print("post", images)
+               imageError = nil
            } catch {
+               print("Fue aqui en scm")
+               images = []
                let error = CampaignError.imgFailed
                imageError = error
                throw error
