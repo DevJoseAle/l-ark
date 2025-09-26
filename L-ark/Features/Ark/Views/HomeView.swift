@@ -2,25 +2,39 @@
 import SwiftUI
 
 struct HomeView: View {
-
+    @State private var router = Router()
     var body: some View {
-        TabView {
-            ArkHomeView()
-                .tabItem { Label("Arca", systemImage: "shippingbox.fill") }
+        MainBGContainer {
+            TabView(selection: $router.selectedTab) {
+                ForEach(TabViewEnum.allCases) { tab in
+                    let tabItem = tab.tabItem
+                    Tab(
+                        tabItem.name,
+                        systemImage: tabItem.systemImage,
+                        value: tab
+                    ) {
+                        tab
+                            .toolbarVisibility(.hidden, for: .tabBar)
+                    }
+
+                }
+            }
+            .safeAreaInset(edge: .bottom){
+                CustomTabBar(selectedIndex: $router.selectedTab)
+            }
+            .environment(router)
+            .environmentObject(SupabaseCampaignManager.shared)
+            .environmentObject(SupabaseDonationsManager.shared)
             
-            VaultHomeView()
-                .tabItem { Label("Bóveda", systemImage: "lock.shield.fill") }
-            
-            ProfileHomeView()
-                .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
-            ProfileHomeView()
-                .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
         }
-        .environmentObject(SupabaseCampaignManager.shared)
-        .environmentObject(SupabaseDonationsManager.shared)
     }
-        
+
 }
 #Preview {
-        HomeView()
+    HomeView()
+}
+
+@Observable
+class Router {
+    var selectedTab: TabViewEnum = .home
 }

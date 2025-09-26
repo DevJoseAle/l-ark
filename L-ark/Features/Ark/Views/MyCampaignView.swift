@@ -7,52 +7,27 @@
 
 import SwiftUI
 
-let someImages = [
-    CampaignImage(
-        id: UUID(uuidString: "D2BECBE0-AAEC-4503-BE70-B92A7A52E390")!,
-        userId: UUID(uuidString: "B7A5E3B2-1111-4F1A-9D01-000000000001")!,
-        campaignId: UUID(uuidString: "89BF4646-3E2A-4900-B0D4-FEE2A318AA8F")!,
-        imageUrl: "https://picsum.photos/800/600?random=10",
-        displayOrder: 1,
-        isPrimary: true
-    ),
-    CampaignImage(
-        id: UUID(uuidString: "D2BECBE0-AAEC-4503-BE70-B92A7A52E390")!,
-        userId: UUID(uuidString: "B7A5E3B2-1111-4F1A-9D01-000000000001")!,
-        campaignId: UUID(uuidString: "89BF4646-3E2A-4900-B0D4-FEE2A318AA8F")!,
-        imageUrl: "https://picsum.photos/800/600?random=10",
-        displayOrder: 2,
-        isPrimary: false
-    ),
-    CampaignImage(
-        id: UUID(uuidString: "D2BECBE0-AAEC-4503-BE70-B92A7A52E390")!,
-        userId: UUID(uuidString: "B7A5E3B2-1111-4F1A-9D01-000000000001")!,
-        campaignId: UUID(uuidString: "89BF4646-3E2A-4900-B0D4-FEE2A318AA8F")!,
-        imageUrl: "https://picsum.photos/800/600?random=10",
-        displayOrder: 3,
-        isPrimary: false
-    ),
-
-]
 struct MyCampaignView: View {
     @EnvironmentObject private var campaign: SupabaseCampaignManager
     @StateObject private var vm = MyCampaignViewModel()
     private var supabase = SupabaseClientManager.shared.client
     var body: some View {
-        VStack(alignment: .leading) {
-            content
-        }
-        .navigationBarTitleDisplayMode(.large)
-        .navigationTitle(Text(campaign.ownCampaign?.title ?? "Sin Título"))
-        .toolbar {
-            ToolbarEditButton(text: "Editar", icon: "pencil") {
-                print("desde aqui")
+        MainBGContainer {
+            VStack(alignment: .leading) {
+                content
             }
-        }
-        .task(id: "load-images") {
-            await vm.loadImages()
-            print(campaign.$ownCampaign)
-
+            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(Text(campaign.ownCampaign?.title ?? "Sin Título"))
+            .toolbar {
+                ToolbarEditButton(text: "Editar", icon: "pencil") {
+                    print("desde aqui")
+                }
+            }
+            .task(id: "load-images") {
+                await vm.loadImages()
+                print(campaign.$ownCampaign)
+                
+            }
         }
 
     }
@@ -99,6 +74,7 @@ struct MyCampaignView: View {
                     }
                     .padding(.horizontal, 5)
                     .padding(.vertical, 10)
+                    .padding(.bottom, 75)
                     
                 }
             }
@@ -224,19 +200,19 @@ struct MyCampaignProgress: View {
         VStack(alignment: .leading, spacing: ArkUI.Spacing.s) {
             Text("Tu meta:")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.customWhite.opacity(0.9))
 
             HStack {
                 Text("CLP: 0")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(Color.white.opacity(0.9))
+                    .foregroundStyle(.customWhite.opacity(0.9))
 
                 Spacer()
 
                 if let goalAmount = campaign.goalAmount {
                     Text("CLP: \(Formatters.formatAmount(goalAmount))")
                         .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(Color.white.opacity(0.9))
+                        .foregroundStyle(.customWhite.opacity(0.9))
                 }
             }
 
@@ -244,11 +220,11 @@ struct MyCampaignProgress: View {
 
             Text(progressText)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.9))
+                .foregroundStyle(.customWhite.opacity(0.9))
             HStack {
                 Text("Status de la campaña: ")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.9))
+                    .foregroundStyle(.customWhite.opacity(0.9))
                 CampaignStatusLabel(.cancelled)
             }
         }
@@ -274,7 +250,7 @@ struct CampaignStatusLabel: View {
         case .draft:
             return Color.purple.opacity(0.7)
         case .completed:
-            return  Color.white.opacity(0.8)
+            return  .customWhite.opacity(0.8)
         case .paused:
             return Color.yellow.opacity(0.7)
         }
@@ -286,7 +262,7 @@ struct CampaignStatusLabel: View {
 //        }
         Text("\(status.rawValue.capitalized)")
             .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(Color.white.opacity(0.9))
+            .foregroundStyle(.customWhite.opacity(0.9))
             .padding(.horizontal, 10)
             .padding(.horizontal, 3)
             .background(labelBackground)

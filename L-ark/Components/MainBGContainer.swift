@@ -26,6 +26,7 @@ struct MainBGContainer<Content: View>: View {
             content
             
             
+            
         }
         
     }

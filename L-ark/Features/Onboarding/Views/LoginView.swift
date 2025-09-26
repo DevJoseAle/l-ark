@@ -10,9 +10,27 @@ struct LoginView: View {
     var body: some View {
         MainBGContainer {
             VStack(spacing: 16) {
-                Spacer()
+                VStack(spacing: 0) {
+                    Image("LarkLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 100, height: 100)
+                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    
+                    Text("L-Ark")
+                        .font(.system(size: 22, weight: .regular, design: .rounded))
+                        .italic(true)
+                        .foregroundColor(.invertedText)
+                    Text("Digital Heritage")
+                        .font(.system(size: 15, weight: .regular, design: .rounded))
+                        .italic(true)
+                        .foregroundColor(.invertedText)
+                }
+                .padding(.bottom, 50)
+
                 Text("Ingresar")
                     .font(.system(size: 30, weight: .bold))
+                    .foregroundStyle(.invertedText)
                 
                 switch vm.step {
                 case .enterEmail:
@@ -29,6 +47,8 @@ struct LoginView: View {
                         "Entiendo que, si no existe una cuenta con este correo, se registrará una nueva",
                         isOn: $isChecked
                     )
+                    .foregroundStyle(.invertedText)
+                    .fontWeight(.medium)
                     .toggleStyle(CheckboxToggleStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
@@ -147,28 +167,28 @@ struct LoginView: View {
     }
 }
 
-//#Preview {
-//    struct PreviewWrapper: View {
-//        @StateObject private var appState = AppState()
-//        @StateObject private var authVM: AuthenticationViewModel
-//        
-//        init() {
-//            let state = AppState()
-//            self._appState = StateObject(wrappedValue: state)
-//            self._authVM = StateObject(wrappedValue: AuthenticationViewModel(appState: state))
-//        }
-//        
-//        var body: some View {
-//            NavigationStack {
-//                LoginView()
-//                    .environmentObject(appState)
-//                    .environmentObject(authVM)
-//            }
-//        }
-//    }
-//    
-//    return PreviewWrapper()
-//}
+#Preview {
+    struct PreviewWrapper: View {
+        @StateObject private var appState = AppState()
+        @StateObject private var authVM: AuthenticationViewModel
+        
+        init() {
+            let state = AppState()
+            self._appState = StateObject(wrappedValue: state)
+            self._authVM = StateObject(wrappedValue: AuthenticationViewModel(appState: state))
+        }
+        
+        var body: some View {
+            NavigationStack {
+                LoginView()
+                    .environmentObject(appState)
+                    .environmentObject(authVM)
+            }
+        }
+    }
+    
+    return PreviewWrapper()
+}
 
 extension String {
     var isValidEmail: Bool {

@@ -38,14 +38,14 @@ private extension ArkFundingSection {
     var totalRaisedSection: some View {
         VStack(alignment: .leading, spacing: ArkUI.Spacing.s) {
             Text("Total Recaudado:")
-                .foregroundStyle(.white)
+                .foregroundStyle(.customWhite)
                 .font(.system(size: 18, weight: .bold))
                 .padding()
 
             HStack(alignment: .firstTextBaseline) {
                 Text("CLP:")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color.customWhite.opacity(0.9))
+                    .foregroundStyle(.customWhite)
                 
                 Text(formattedTotal)
                     .font(.system(size: 40, weight: .semibold))
@@ -64,10 +64,10 @@ private extension ArkFundingSection {
             showDetails.toggle()
         } label: {
             Image(systemName: showDetails ? "eye.slash" : "eye")
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.customWhite)
                 .imageScale(.medium)
                 .padding(8)
-                .background(.white.opacity(0.08), in: Circle())
+                .background(.customWhite.opacity(0.3), in: Circle())
         }
     }
     
@@ -75,12 +75,12 @@ private extension ArkFundingSection {
         VStack(alignment: .leading, spacing: ArkUI.Spacing.s) {
             Text("Tu meta:")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.customWhite)
 
             HStack {
                 Text("CLP: 0")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(Color.customWhite.opacity(0.9))
+                    .foregroundStyle(.customWhite)
                 
                 Spacer()
                 
@@ -101,7 +101,7 @@ private extension ArkFundingSection {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                .strokeBorder(.customWhite.opacity(0.15), lineWidth: 1)
         )
         .padding(.horizontal, ArkUI.Spacing.m)
     }

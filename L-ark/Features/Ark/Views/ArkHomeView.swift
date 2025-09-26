@@ -7,10 +7,12 @@ struct ArkHomeView: View {
     
     var body: some View {
         NavigationStack {
-            content
-                .navigationBarBackButtonHidden(true)
-                .navigationTitle(Text("Home"))
-                .navigationBarTitleDisplayMode(.large)
+            MainBGContainer {
+                content
+                    .navigationBarBackButtonHidden(true)
+                    .navigationTitle(Text("Home"))
+                    .navigationBarTitleDisplayMode(.large)
+            }
         }
         .task {
             await viewModel.loadInitialData(
@@ -72,7 +74,7 @@ struct ArkHomeView: View {
                 donationsSection
             }
             .padding(.horizontal, ArkUI.Spacing.m)
-            .padding(.vertical, ArkUI.Spacing.m)
+            .padding(.bottom, 60)
         }
         .scrollIndicators(.hidden)
         

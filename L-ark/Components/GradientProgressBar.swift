@@ -25,7 +25,7 @@ struct GradientProgressBar: View {
         .overlay(
             Text("\(Int(value * 100))%")
                 .font(.caption).bold()
-                .foregroundColor(.white)
+                .foregroundColor(.customWhite)
                 .padding(.horizontal, 6),
             alignment: .center
         )
