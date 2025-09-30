@@ -46,7 +46,6 @@ final class ArkHomeViewModel: ObservableObject {
             state = .error(.generic("Error inesperado") as ArkHomeViewModelError)
         }
         
-        print(state)
     }
 
 }

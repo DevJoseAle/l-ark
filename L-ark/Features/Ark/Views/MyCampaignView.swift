@@ -17,15 +17,13 @@ struct MyCampaignView: View {
                 content
             }
             .navigationBarTitleDisplayMode(.large)
-            .navigationTitle(Text(campaign.ownCampaign?.title ?? "Sin Título"))
+            .navigationTitle(Text(campaign.firstOwnCampaign?.title ?? "Sin Título"))
             .toolbar {
                 ToolbarEditButton(text: "Editar", icon: "pencil") {
-                    print("desde aqui")
                 }
             }
             .task(id: "load-images") {
                 await vm.loadImages()
-                print(campaign.$ownCampaign)
                 
             }
         }
@@ -43,7 +41,7 @@ struct MyCampaignView: View {
                         .frame(height: 320)
                     Divider()
                     //MARK: Descripcion de Camapaña
-                    if let ownCampaign = campaign.ownCampaign {
+                    if let ownCampaign = campaign.firstOwnCampaign {
                                    MyCampaignProgress(campaign: ownCampaign)
                                    
                                    VStack(alignment: .leading) {
@@ -121,7 +119,7 @@ private struct ErrorViewCampaign: View {
         MyCampaignView()
             .environmentObject(manager)
             .task {
-                if manager.ownCampaign == nil {
+                if manager.firstOwnCampaign == nil {
                     try? await manager.getOwnCampaignAction(
                         "b7a5e3b2-1111-4f1a-9d01-000000000001"
                     )

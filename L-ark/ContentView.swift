@@ -16,6 +16,8 @@ struct ContentView: View {
     var body: some View {
         Group {
             switch appState.isLoggedIn {
+            case .loading:
+                LoadingView()
             case .loggedIn:
                 HomeView()
                 

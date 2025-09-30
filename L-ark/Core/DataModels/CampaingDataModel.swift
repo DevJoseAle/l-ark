@@ -94,41 +94,41 @@ enum VaultEncryption: String, CaseIterable, Codable {
     case clientSide = "client_side"
 }
 
-// MARK: - Modelos principales
+ //MARK: - Modelos principales
 
-//struct User: Codable, Identifiable {
-//    let id: UUID
-//    let displayName: String
-//    let email: String
-//    let phone: String?
-//    let country: String?
-//    let kycStatus: KYCStatus
-//    let defaultCurrency: String
-//    let pinSet: Bool
-//    let createdAt: Date
-//    let updatedAt: Date
-//    
-//    // Relaciones opcionales (no incluidas en Codable por defecto)
-//    var campaigns: [Campaign]?
-//    var devices: [UserDevice]?
-//    var kycDocuments: [KYCDocument]?
-//    var donations: [Donation]?
-//    var beneficiaries: [CampaignBeneficiary]?
-//    var vaultItems: [VaultItem]?
-//    
-//    enum CodingKeys: String, CodingKey {
-//        case id
-//        case displayName = "display_name"
-//        case email
-//        case phone
-//        case country
-//        case kycStatus = "kyc_status"
-//        case defaultCurrency = "default_currency"
-//        case pinSet = "pin_set"
-//        case createdAt = "created_at"
-//        case updatedAt = "updated_at"
-//    }
-//}
+struct SupabaseUser: Codable, Identifiable {
+    let id: UUID
+    let displayName: String
+    let email: String
+    let phone: String?
+    let country: String?
+    var kycStatus: KYCStatusSupabase
+    let defaultCurrency: String
+    var pinSet: Bool
+    let createdAt: Date
+    let updatedAt: Date
+    
+    // Relaciones opcionales (no incluidas en Codable por defecto)
+    var campaigns: [Campaign]?
+    var devices: [UserDevice]?
+    var kycDocuments: [KYCDocument]?
+    var donations: [Donation]?
+    var beneficiaries: [CampaignBeneficiary]?
+    var vaultItems: [VaultItem]?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case displayName = "display_name"
+        case email
+        case phone
+        case country
+        case kycStatus = "kyc_status"
+        case defaultCurrency = "default_currency"
+        case pinSet = "pin_set"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
 
 struct Campaign: Codable, Identifiable {
     let id: UUID

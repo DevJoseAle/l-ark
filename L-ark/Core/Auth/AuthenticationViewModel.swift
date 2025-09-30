@@ -182,6 +182,8 @@ final class AuthenticationViewModel: ObservableObject {
     @Published var isChecked: Bool = false
     @Published var userExist: Bool = false
     @Published var resendCooldown: Int = 0
+    
+    private var authStateTask: Task<Void, Never>?
     private var resendTimer: Timer?
     
     private let appState: AppState
@@ -193,21 +195,74 @@ final class AuthenticationViewModel: ObservableObject {
     ) {
         self.appState = appState
         self.supabase = supabaseClient
+        
+        setupAuthStateListener()
     }
     
     
 
     //MARK: Functions:
-    
+    private func setupAuthStateListener() {
+        authStateTask = Task {
+            for await (event, session) in supabase.auth.authStateChanges {
+                switch event {
+                case .signedIn, .initialSession:
+                    if let session = session {
+                        appState.setUser(session.user)
+                        appState.isLoggedIn = .loggedIn
+                    }
+                    
+                case .signedOut:
+                    appState.isLoggedIn = .loggedOut
+                    appState.currentUser = nil
+                    reset()
+                    
+                case .userUpdated:
+                    if let session = session {
+                        appState.setUser(session.user)
+                    }
+                    
+                case .tokenRefreshed:
+                    if let session = session {
+                        appState.setUser(session.user)
+                    }
+                    
+                case .userDeleted:
+                    appState.isLoggedIn = .loggedOut
+                    appState.currentUser = nil
+                                        
+                case .passwordRecovery:
+                    print("🔑 Recuperación de contraseña")
+                    
+                case .mfaChallengeVerified:
+                    print("MFA")
+                @unknown default:
+                    print("⚠️ Evento de auth desconocido")
+                }
+            }
+        }
+    }
+       
+       deinit {
+           authStateTask?.cancel()
+       }
     func bootstrapSession() async {
-        if let session = try? await supabase.auth.session {
-            print(session)
-            appState.setUser(session.user)
-            appState.isLoggedIn = .loggedIn  // ✅ Asegurar que se marca como loggeado
-        } else {
-            appState.isLoggedIn = .loggedOut
-            appState.currentUser = nil
-            step = .enterEmail
+        do{
+            if let session = try? await supabase.auth.session {
+                print(session)
+                appState.setUser(session.user)
+                appState.isLoggedIn = .loggedIn  // ✅ Asegurar que se marca como loggeado
+            } else {
+                appState.isLoggedIn = .loggedOut
+                appState.currentUser = nil
+                
+                step = .enterEmail
+            }
+        }catch{
+            try? await supabase.auth.signOut()
+                   appState.isLoggedIn = .loggedOut
+                   appState.currentUser = nil
+                   step = .enterEmail
         }
     }
     
@@ -235,7 +290,7 @@ final class AuthenticationViewModel: ObservableObject {
         do {
             try await supabase.auth.signInWithOTP(
                 email: email.lowercased(),
-                shouldCreateUser: !self.userExist
+                shouldCreateUser: true
             )
             step = .codeSent(exist: self.userExist)
         } catch {
@@ -255,7 +310,7 @@ final class AuthenticationViewModel: ObservableObject {
             let session = try await supabase.auth.verifyOTP(
                 email: self.email.lowercased(),
                 token: code,
-                type: exist ? .email : .signup
+                type: .email
             )
             step = .loggedIn
             appState.setUser(session.user)  // Guardar usuario
@@ -264,7 +319,7 @@ final class AuthenticationViewModel: ObservableObject {
             step = .error(error.localizedDescription)
             loginError = true
         }
-
+        isLoading = false
     }
 
     func resendOTP() async {
