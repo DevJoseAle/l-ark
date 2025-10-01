@@ -11,12 +11,13 @@ import Supabase
 enum CampaignError: DisplayableError {
     case failed
     case imgFailed
-    
+    case uploadFailed(String)
 
     var userMessage: String {
         switch self {
         case .failed: return "Error al Consultar Campañas"
         case .imgFailed: return "Error al Consultar Imagenes"
+        case .uploadFailed(let detail): return "Error al subir archivo: \(detail)"
         }
     }
 
@@ -24,6 +25,7 @@ enum CampaignError: DisplayableError {
         switch self {
         case .failed: return true
         case .imgFailed: return false
+        case .uploadFailed: return false
         }
     }
 }
@@ -144,4 +146,199 @@ final class SupabaseCampaignManager: ObservableObject {
         hasLoadedImages = false
         imagesLoadedAt = nil
     }
+    
+    func searchUsersByEmail(_ email: String) async throws -> [SupabaseUser] {
+           let trimmedEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
+           
+           guard !trimmedEmail.isEmpty else {
+               return []
+           }
+           
+           let response: [SupabaseUser] = try await supabase
+               .from("users")
+               .select()
+               .ilike("email", value: "%\(trimmedEmail)%")
+               .limit(5)
+               .execute()
+               .value
+           
+           return response
+       }
+       
+       // MARK: - Subida de Imágenes/Documentos
+       
+       func uploadCampaignImage(_ document: DocumentUpload, campaignId: UUID, index: Int) async throws -> String {
+           let fileName = "\(campaignId.uuidString)_\(index)_\(UUID().uuidString)_\(document.fileName)"
+           let filePath = "campaigns/\(campaignId.uuidString)/images/\(fileName)"
+           
+           do {
+               try await supabase.storage
+                   .from("campaign-media")
+                   .upload(
+                       path: filePath,
+                       file: document.data,
+                       options: FileOptions(
+                           contentType: document.mimeType
+                       )
+                   )
+               
+               let publicURL = try supabase.storage
+                   .from("campaign-media")
+                   .getPublicURL(path: filePath)
+               
+               return publicURL.absoluteString
+           } catch {
+               throw CampaignError.uploadFailed("No se pudo subir \(document.fileName)")
+           }
+       }
+       
+       func uploadBeneficiaryDocument(_ document: DocumentUpload, campaignId: UUID, beneficiaryUserId: UUID, index: Int) async throws -> String {
+           let fileName = "\(beneficiaryUserId.uuidString)_\(index)_\(UUID().uuidString)_\(document.fileName)"
+           let filePath = "beneficiaries/\(campaignId.uuidString)/\(beneficiaryUserId.uuidString)/\(fileName)"
+           
+           do {
+               try await supabase.storage
+                   .from("campaign-media")
+                   .upload(
+                       path: filePath,
+                       file: document.data,
+                       options: FileOptions(
+                           contentType: document.mimeType
+                       )
+                   )
+               
+               let publicURL = try supabase.storage
+                   .from("campaign-media")
+                   .getPublicURL(path: filePath)
+               
+               return publicURL.absoluteString
+           } catch {
+               throw CampaignError.uploadFailed("No se pudo subir \(document.fileName)")
+           }
+       }
+       
+       // MARK: - Validaciones
+       
+       func validateBeneficiaries(_ beneficiaries: [BeneficiaryDraft]) -> Bool {
+           let percentBeneficiaries = beneficiaries.filter { $0.shareType == .percent }
+           
+           if percentBeneficiaries.isEmpty {
+               return true
+           }
+           
+           let totalPercent = percentBeneficiaries.reduce(0.0) { $0 + $1.shareValue }
+           return abs(totalPercent - 100.0) < 0.01 // Tolerancia para decimales
+       }
+       
+       // MARK: - Crear Campaña
+       
+       func createCampaign(
+           ownerUserId: UUID,
+           title: String,
+           description: String?,
+           goalAmount: Double?,
+           softCap: Double?,
+           hardCap: Double?,
+           currency: String,
+           visibility: CampaignVisibility,
+           startAt: Date?,
+           endAt: Date?,
+           beneficiaryRule: BeneficiaryRule?,
+           campaignImages: [DocumentUpload],
+           beneficiaries: [BeneficiaryDraft]
+       ) async throws -> Campaign {
+           
+           // Validar beneficiarios
+           guard validateBeneficiaries(beneficiaries) else {
+               throw CampaignError.failed
+           }
+           
+           // 1. Crear la campaña en estado draft
+           let campaignInsert = CampaignInsert(
+               ownerUserId: ownerUserId,
+               title: title,
+               description: description,
+               goalAmount: goalAmount,
+               softCap: softCap,
+               hardCap: hardCap,
+               currency: currency,
+               status: CampaignStatus.draft.rawValue,
+               visibility: visibility.rawValue,
+               startAt: startAt,
+               endAt: endAt,
+               beneficiaryRule: beneficiaryRule?.rawValue
+           )
+           
+           let createdCampaign: Campaign = try await supabase
+               .from("campaigns")
+               .insert(campaignInsert)
+               .select()
+               .single()
+               .execute()
+               .value
+           
+           // 2. Subir imágenes de campaña si existen
+           if !campaignImages.isEmpty {
+               for (index, image) in campaignImages.enumerated() {
+                   let imageUrl = try await uploadCampaignImage(
+                       image,
+                       campaignId: createdCampaign.id,
+                       index: index
+                   )
+                   
+                   // Insertar en tabla campaign_images
+                   let campaignImageInsert = CampaignImageInsert(
+                       userId: ownerUserId,
+                       campaignId: createdCampaign.id,
+                       imageUrl: imageUrl,
+                       displayOrder: index,
+                       isPrimary: index == 0
+                   )
+                   
+                   let _: CampaignImage = try await supabase
+                       .from("campaign_images")
+                       .insert(campaignImageInsert)
+                       .select()
+                       .single()
+                       .execute()
+                       .value
+               }
+           }
+           
+           // 3. Crear beneficiarios
+           for (index, beneficiary) in beneficiaries.enumerated() {
+               guard let user = beneficiary.user else { continue }
+               
+               let beneficiaryInsert = CampaignBeneficiaryInsert(
+                   campaignId: createdCampaign.id,
+                   beneficiaryUserId: user.id,
+                   shareType: beneficiary.shareType.rawValue,
+                   shareValue: beneficiary.shareValue,
+                   priority: beneficiary.priority ?? index + 1,
+                   isActive: true
+               )
+               
+               let _: CampaignBeneficiary = try await supabase
+                   .from("campaign_beneficiaries")
+                   .insert(beneficiaryInsert)
+                   .select()
+                   .single()
+                   .execute()
+                   .value
+               
+               // 4. Subir documentos de relación del beneficiario
+               if !beneficiary.relationshipDocs.isEmpty {
+                   for (docIndex, doc) in beneficiary.relationshipDocs.enumerated() {
+                       _ = try await uploadBeneficiaryDocument(
+                           doc,
+                           campaignId: createdCampaign.id,
+                           beneficiaryUserId: user.id,
+                           index: docIndex
+                       )
+                   }
+               }
+           }
+           
+           return createdCampaign
+       }
 }

@@ -14,8 +14,12 @@ struct KYCGateway: View {
             switch appState.currentUser?.kycStatus {
             case .kycPending, .kycRejected:
                 KYCOnboardingFlow()
-            case .kycReview, .kycVerified :
-                CreateCampaignView()
+            case .kycReview, .kycVerified:
+                if let userId = appState.currentUser?.id {
+                    CreateCampaignView()
+                } else {
+                    Text("Error: Usuario no encontrado")
+                }
              default:
                 KYCOnboardingFlow()
             }

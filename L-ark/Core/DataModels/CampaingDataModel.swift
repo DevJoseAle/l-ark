@@ -128,6 +128,7 @@ struct SupabaseUser: Codable, Identifiable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
+
 }
 
 struct Campaign: Codable, Identifiable {
@@ -479,6 +480,108 @@ struct CampaignImage: Codable, Identifiable, Hashable {
     
     enum CodingKeys: String, CodingKey {
         case id
+        case userId = "user_id"
+        case campaignId = "campaign_id"
+        case imageUrl = "image_url"
+        case displayOrder = "display_order"
+        case isPrimary = "is_primary"
+    }
+}
+// Modelo para beneficiario en creación
+struct BeneficiaryDraft: Identifiable, Equatable {
+    let id = UUID()
+    var email: String
+    var user: SupabaseUser?
+    var shareType: BeneficiaryShareType = .percent
+    var shareValue: Double = 0
+    var priority: Int?
+    var relationshipDocs: [DocumentUpload] = []
+    
+    static func == (lhs: BeneficiaryDraft, rhs: BeneficiaryDraft) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// Modelo para documentos a subir
+struct DocumentUpload: Identifiable, Equatable {
+    let id = UUID()
+    let data: Data
+    let fileName: String
+    let mimeType: String
+    var uploadURL: String?
+    
+    var isImage: Bool {
+        mimeType.hasPrefix("image/")
+    }
+    
+    var isPDF: Bool {
+        mimeType == "application/pdf"
+    }
+    
+    static func == (lhs: DocumentUpload, rhs: DocumentUpload) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// Modelo para insertar campaña
+struct CampaignInsert: Encodable {
+    let ownerUserId: UUID
+    let title: String
+    let description: String?
+    let goalAmount: Double?
+    let softCap: Double?
+    let hardCap: Double?
+    let currency: String
+    let status: String
+    let visibility: String
+    let startAt: Date?
+    let endAt: Date?
+    let beneficiaryRule: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case ownerUserId = "owner_user_id"
+        case title
+        case description
+        case goalAmount = "goal_amount"
+        case softCap = "soft_cap"
+        case hardCap = "hard_cap"
+        case currency
+        case status
+        case visibility
+        case startAt = "start_at"
+        case endAt = "end_at"
+        case beneficiaryRule = "beneficiary_rule"
+    }
+}
+
+// Modelo para insertar beneficiario
+struct CampaignBeneficiaryInsert: Encodable {
+    let campaignId: UUID
+    let beneficiaryUserId: UUID
+    let shareType: String
+    let shareValue: Double
+    let priority: Int?
+    let isActive: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case campaignId = "campaign_id"
+        case beneficiaryUserId = "beneficiary_user_id"
+        case shareType = "share_type"
+        case shareValue = "share_value"
+        case priority
+        case isActive = "is_active"
+    }
+}
+
+// Modelo para insertar imagen de campaña
+struct CampaignImageInsert: Encodable {
+    let userId: UUID
+    let campaignId: UUID
+    let imageUrl: String
+    let displayOrder: Int
+    let isPrimary: Bool
+    
+    enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case campaignId = "campaign_id"
         case imageUrl = "image_url"

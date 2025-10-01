@@ -18,7 +18,7 @@ class AppState: ObservableObject {
     @Published var error: Error?
     
     
-    private var supabase: SupabaseClient
+     var supabase: SupabaseClient
     
     init(supabase: SupabaseClient = SupabaseClientManager.shared.client){
         self.supabase = supabase

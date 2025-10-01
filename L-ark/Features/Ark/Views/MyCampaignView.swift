@@ -66,8 +66,8 @@ struct MyCampaignView: View {
                             .padding(.bottom, 8)
                             .font(.title2)
                             .fontWeight(.bold)
-                        BeneficiaryCard()
-                        BeneficiaryCard()
+//                        BeneficiaryCard()
+//                        BeneficiaryCard()
 
                     }
                     .padding(.horizontal, 5)
@@ -132,45 +132,45 @@ private struct ErrorViewCampaign: View {
 //#Preview {
 //    BeneficiaryCard()
 //}
-struct BeneficiaryCard: View {
-    
-    //MARK: Cambiar por user
-    var body: some View{
-        HStack {
-            AsyncImage(url: URL(string:"https://picsum.photos/800/600?random=10") , scale: 0.9)
-                .frame(width: 60, height: 60)
-                .clipShape(Circle())
-            VStack(alignment: .leading){
-                Text("Nombre y Apellido")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                Text("Parentesco")
-                    .font(.callout)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
-                
-            }
-            .padding()
-            
-            VStack{
-                Text("%")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                Text("50%")
-                    .font(.callout)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
-            }
-            
-        }
-        .frame(maxWidth: .infinity, maxHeight: 100)
-        .overlay(){
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.gray.opacity(0.4), lineWidth: 1)
-        }
-        .padding(.horizontal, 15)
-    }
-}
+//struct BeneficiaryCard: View {
+//    
+//    //MARK: Cambiar por user
+//    var body: some View{
+//        HStack {
+//            AsyncImage(url: URL(string:"https://picsum.photos/800/600?random=10") , scale: 0.9)
+//                .frame(width: 60, height: 60)
+//                .clipShape(Circle())
+//            VStack(alignment: .leading){
+//                Text("Nombre y Apellido")
+//                    .font(.title3)
+//                    .fontWeight(.semibold)
+//                Text("Parentesco")
+//                    .font(.callout)
+//                    .fontWeight(.semibold)
+//                    .foregroundStyle(.secondary)
+//                
+//            }
+//            .padding()
+//            
+//            VStack{
+//                Text("%")
+//                    .font(.title3)
+//                    .fontWeight(.semibold)
+//                Text("50%")
+//                    .font(.callout)
+//                    .fontWeight(.semibold)
+//                    .foregroundStyle(.secondary)
+//            }
+//            
+//        }
+//        .frame(maxWidth: .infinity, maxHeight: 100)
+//        .overlay(){
+//            RoundedRectangle(cornerRadius: 10)
+//                .stroke(Color.gray.opacity(0.4), lineWidth: 1)
+//        }
+//        .padding(.horizontal, 15)
+//    }
+//}
 struct MyCampaignProgress: View {
     var campaign: Campaign
     private var progressPercentage: Double {
