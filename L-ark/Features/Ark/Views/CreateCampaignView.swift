@@ -340,7 +340,7 @@ extension View {
     func cardStyle() -> some View {
         self
             .padding()
-            .background(Color.white)
+            .background(Color.campaignSection)
             .cornerRadius(16)
             .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
     }
