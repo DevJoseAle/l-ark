@@ -9,6 +9,7 @@ import SwiftUI
 
 struct KYCGateway: View {
     @EnvironmentObject var appState: AppState
+    @StateObject var homeviewModel = HomeViewModel()
     var body: some View {
         Group {
             switch appState.currentUser?.kycStatus {
@@ -16,7 +17,7 @@ struct KYCGateway: View {
                 KYCOnboardingFlow()
             case .kycReview, .kycVerified:
                 if (appState.currentUser?.id) != nil {
-                    CreateCampaignView()
+                    CreateCampaignView(homeViewModel: homeviewModel)
                 } else {
                     Text("Error: Usuario no encontrado")
                 }

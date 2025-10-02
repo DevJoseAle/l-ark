@@ -25,13 +25,12 @@ final class MyCampaignViewModel: ObservableObject {
            viewState = .loading
            do {
                // Usa el ID real de la campaña
-//               guard let campaignId = campaignManager.ownCampaign?.id.uuidString else {
-//                   print(campaignManager.ownCampaign?.id.uuidString)
-//                   print("Por acá está el error")
-//                   throw CampaignError.imgFailed
-//               }
+               guard let campaignId = campaignManager.firstOwnCampaign?.id.uuidString else {
+                   print("Por acá está el error")
+                   throw CampaignError.imgFailed
+               }
                print("Antes del getimages")
-               try await campaignManager.getImagesFromCampaign("89bf4646-3e2a-4900-b0d4-fee2a318aa8f")
+               try await campaignManager.getImagesFromCampaign(campaignId)
                viewState = .loaded
            } catch let imageError as CampaignError {
                print("Fue aqui en vm1")

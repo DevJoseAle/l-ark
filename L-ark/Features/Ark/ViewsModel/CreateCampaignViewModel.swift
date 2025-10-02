@@ -30,6 +30,8 @@ class CreateCampaignViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showError: Bool = false
     @Published var campaignCreated: Bool = false
+    @Published var showSuccessToast = false
+    @Published var successMessage = ""
     
     private let service = SupabaseCampaignManager()
     private var searchTask: Task<Void, Never>?
@@ -118,24 +120,41 @@ class CreateCampaignViewModel: ObservableObject {
         }
     }
     
+    // Modificar la función addBeneficiary existente
+
     func addBeneficiary(_ user: SupabaseUser) {
         guard !beneficiaries.contains(where: { $0.user?.id == user.id }) else {
             return
         }
         
-        let shareValue: Double = beneficiaryRule == .fixedShares ? (beneficiaries.isEmpty ? 100.0 : 0.0) : 0.0
-        
-        let beneficiary = BeneficiaryDraft(
-            email: user.email,
-            user: user,
-            shareType: .percent,
-            shareValue: shareValue,
-            priority: beneficiaries.count + 1
-        )
-        
-        beneficiaries.append(beneficiary)
-        currentBeneficiaryEmail = ""
-        searchResults = []
+        // ✅ OPCIONAL: Validar antes de agregar
+        Task {
+            do {
+                if let conflict = try await SupabaseCampaignManager.shared.checkBeneficiaryAvailability(userId: user.id) {
+                    errorMessage = "\(conflict.beneficiaryName) ya es beneficiario de '\(conflict.campaignTitle)'"
+                    showError = true
+                    return
+                }
+                
+                // Si no hay conflicto, agregar
+                let shareValue: Double = beneficiaryRule == .fixedShares ? (beneficiaries.isEmpty ? 100.0 : 0.0) : 0.0
+                
+                let beneficiary = BeneficiaryDraft(
+                    email: user.email,
+                    user: user,
+                    shareType: .percent,
+                    shareValue: shareValue,
+                    priority: beneficiaries.count + 1
+                )
+                
+                beneficiaries.append(beneficiary)
+                currentBeneficiaryEmail = ""
+                searchResults = []
+            } catch {
+                errorMessage = "Error al validar beneficiario"
+                showError = true
+            }
+        }
     }
     
     func removeBeneficiary(_ beneficiary: BeneficiaryDraft) {
@@ -169,48 +188,111 @@ class CreateCampaignViewModel: ObservableObject {
     
     // MARK: - Create Campaign
     
-    func createCampaign(ownerUserId: UUID) async {
-        guard isFormValid else {
-            errorMessage = "Por favor completa todos los campos requeridos"
-            showError = true
-            return
+    // En CreateCampaignViewModel.swift
+
+//    func createCampaign(ownerUserId: UUID) async {
+//        guard isFormValid else {
+//            errorMessage = "Por favor completa todos los campos requeridos"
+//            showError = true
+//            return
+//        }
+//        
+//        isCreating = true
+//        errorMessage = nil
+//        
+//        do {
+//            let goal = Double(goalAmount.replacingOccurrences(of: ",", with: "")) ?? nil
+//            let soft = Double(softCap.replacingOccurrences(of: ",", with: "")) ?? nil
+//            let hard = Double(hardCap.replacingOccurrences(of: ",", with: "")) ?? nil
+//            
+//            let campaign = try await SupabaseCampaignManager.shared.createCampaign(
+//                ownerUserId: ownerUserId,
+//                title: title,
+//                description: description.isEmpty ? nil : description,
+//                goalAmount: goal,
+//                softCap: soft,
+//                hardCap: hard,
+//                currency: currency,
+//                visibility: visibility,
+//                startAt: startDate,
+//                endAt: endDate,
+//                beneficiaryRule: beneficiaryRule,
+//                campaignImages: campaignImages,
+//                beneficiaries: beneficiaries
+//            )
+//            
+//            campaignCreated = true
+//            print("✅ Campaña creada: \(campaign.id)")
+//            
+//        } catch let error as CampaignError {  // ✅ CAMBIO: Catch específico para CampaignError
+//            errorMessage = error.userMessage
+//            showError = true
+//        } catch {
+//            errorMessage = error.localizedDescription
+//            showError = true
+//        }
+//        
+//        isCreating = false
+//    }
+    func createCampaign(ownerUserId: UUID, homeViewModel: HomeViewModel, appState: AppState) async {
+            guard isFormValid else {
+                errorMessage = "Por favor completa todos los campos requeridos"
+                showError = true
+                return
+            }
+            
+            isCreating = true
+            errorMessage = nil
+            
+            do {
+                let goal = Double(goalAmount.replacingOccurrences(of: ",", with: "")) ?? nil
+                let soft = Double(softCap.replacingOccurrences(of: ",", with: "")) ?? nil
+                let hard = Double(hardCap.replacingOccurrences(of: ",", with: "")) ?? nil
+                
+                let campaign = try await SupabaseCampaignManager.shared.createCampaign(
+                    ownerUserId: ownerUserId,
+                    title: title,
+                    description: description.isEmpty ? nil : description,
+                    goalAmount: goal,
+                    softCap: soft,
+                    hardCap: hard,
+                    currency: currency,
+                    visibility: visibility,
+                    startAt: startDate,
+                    endAt: endDate,
+                    beneficiaryRule: beneficiaryRule,
+                    campaignImages: campaignImages,
+                    beneficiaries: beneficiaries
+                )
+                
+                print("✅ Campaña creada: \(campaign.id)")
+                
+                // Recargar datos iniciales
+                await homeViewModel.loadInitialData(appState)
+                
+                // Mostrar toast de éxito
+                successMessage = "Campaña creada exitosamente. Te avisaremos cuando esté activa después de la validación."
+                showSuccessToast = true
+                
+                // Ocultar toast después de 4 segundos
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                    self.showSuccessToast = false
+                }
+                
+                // Marcar como creada para cerrar la vista
+                campaignCreated = true
+                
+            } catch let error as CampaignError {
+                errorMessage = error.userMessage
+                showError = true
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+            
+            isCreating = false
         }
-        
-        isCreating = true
-        errorMessage = nil
-        
-        do {
-            let goal = Double(goalAmount.replacingOccurrences(of: ",", with: "")) ?? nil
-            let soft = Double(softCap.replacingOccurrences(of: ",", with: "")) ?? nil
-            let hard = Double(hardCap.replacingOccurrences(of: ",", with: "")) ?? nil
-            
-            let campaign = try await service.createCampaign(
-                ownerUserId: ownerUserId,
-                title: title,
-                description: description.isEmpty ? nil : description,
-                goalAmount: goal,
-                softCap: soft,
-                hardCap: hard,
-                currency: currency,
-                visibility: visibility,
-                startAt: startDate,
-                endAt: endDate,
-                beneficiaryRule: beneficiaryRule,
-                campaignImages: campaignImages,
-                beneficiaries: beneficiaries
-            )
-            
-            campaignCreated = true
-            print("✅ Campaña creada: \(campaign.id)")
-            
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-        
-        isCreating = false
-    }
-    
+
     func reset() {
         title = ""
         description = ""

@@ -185,7 +185,7 @@ extension Campaign {
             softCap: nil,
             hardCap: nil,
             currency: "CLP",
-            status: .active,
+            status: .cancelled,
             visibility: .publicCampaign,
             startAt: Date(),
             endAt: Calendar.current.date(byAdding: .day, value: 30, to: Date()),

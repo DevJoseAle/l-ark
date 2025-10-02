@@ -6,6 +6,8 @@ struct CreateCampaignView: View {
     @StateObject private var viewModel = CreateCampaignViewModel()
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @ObservedObject var homeViewModel: HomeViewModel
+    
 
     var body: some View {
         NavigationStack {
@@ -299,7 +301,11 @@ struct CreateCampaignView: View {
     private var createButton: some View {
         Button {
             Task {
-                await viewModel.createCampaign(ownerUserId: appState.currentUser!.id )
+                await viewModel.createCampaign(
+                    ownerUserId: appState.currentUser!.id,
+                    homeViewModel: homeViewModel,
+                    appState: appState
+                )
             }
         } label: {
             createButtonLabel
@@ -348,9 +354,9 @@ extension View {
 
 // MARK: - Previews
 
-#Preview {
-    CreateCampaignView()
-}
+//#Preview {
+//    CreateCampaignView()
+//}
 
 #Preview("Beneficiary Card") {
     ScrollView {

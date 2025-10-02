@@ -223,7 +223,7 @@ struct MyCampaignProgress: View {
                 Text("Status de la campaña: ")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.customWhite.opacity(0.9))
-                CampaignStatusLabel(.cancelled)
+                CampaignStatusLabel(campaign.status)
             }
         }
         .padding(ArkUI.Spacing.m)
@@ -234,36 +234,4 @@ struct MyCampaignProgress: View {
 }
 
 
-struct CampaignStatusLabel: View {
-    let status: CampaignStatus
-    init(_ status: CampaignStatus){
-        self.status = status
-    }
-    private var labelBackground: Color {
-        switch status {
-        case .active:
-            return Color.green.opacity(0.7)
-        case .cancelled:
-            return Color.red.opacity(0.7)
-        case .draft:
-            return Color.purple.opacity(0.7)
-        case .completed:
-            return  .customWhite.opacity(0.8)
-        case .paused:
-            return Color.yellow.opacity(0.7)
-        }
-    }
-    var body: some View{
-//        switch status {
-//        case .active:
-//            Text("Activo")
-//        }
-        Text("\(status.rawValue.capitalized)")
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(.customWhite.opacity(0.9))
-            .padding(.horizontal, 10)
-            .padding(.horizontal, 3)
-            .background(labelBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-    }
-}
+

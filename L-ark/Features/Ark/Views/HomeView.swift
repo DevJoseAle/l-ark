@@ -21,6 +21,7 @@ struct HomeView: View {
                     }
 
                 }
+                
             }
             .safeAreaInset(edge: .bottom){
                 CustomTabBar(selectedIndex: $router.selectedTab)
@@ -28,7 +29,8 @@ struct HomeView: View {
             .environment(router)
             .environmentObject(SupabaseCampaignManager.shared)
             .environmentObject(SupabaseDonationsManager.shared)
-            .environmentObject(homeViewModel) 
+            .environmentObject(homeViewModel)
+            
             
         }
         .larkLoadingOverlay(
