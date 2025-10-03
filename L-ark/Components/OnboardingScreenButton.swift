@@ -16,12 +16,14 @@ struct OnboardingScreenButton: View {
     var fill: ButtonFill = .none
     var icon: ButtonIcon? = nil
     var isDisabled: Bool? = false
+    var textColor : Color? = .white
     var action: () -> Void = {}
 
 
+
     private let radius: CGFloat = 20
-    private let strokeColor: Color = .gray
-    private let strokeWidth: CGFloat = 2
+    private let strokeColor: Color = .white
+    private let strokeWidth: CGFloat = 3
 
     var body: some View {
         Button(action: action) {
@@ -85,34 +87,35 @@ struct OnboardingScreenButton: View {
     }
 
     private var foregroundColor: Color {
-        switch fill {
-        case .none:      return .gray
-        default:         return .white
+            return textColor ?? .white
         }
-    }
+    
 }
 
 #Preview {
-    VStack(spacing: 16) {
-        OnboardingScreenButton(
-            title: "Continuar con Apple",
-            fill: .color(.black),
-            icon: .system("apple.logo")
-        ) {}
-
-        OnboardingScreenButton(
-            title: "Continuar con Google",
-            fill: .none,
-            icon: .asset("googleLogo")
-        ) {}
-
-        OnboardingScreenButton(
-            title: "Continuar", 
-            fill: .gradient(
-                LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom)
-            ),
-            icon: .system("arrow.right")
-        ) {}
+    MainBGContainer {
+        VStack(spacing: 16) {
+            OnboardingScreenButton(
+                title: "Continuar con Apple",
+                fill: .color(.black),
+                icon: .system("apple.logo")
+            ) {}
+            
+            OnboardingScreenButton(
+                title: "Continuar con Google",
+                fill: .color(.white),
+                icon: .asset("googleLogo"),
+                textColor: .black.opacity(0.6)
+            ) 
+            
+            OnboardingScreenButton(
+                title: "Continuar", 
+                fill: .gradient(
+                    LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom)
+                ),
+                icon: .system("arrow.right")
+            ) {}
+        }
+        .padding()
     }
-    .padding()
 }

@@ -13,26 +13,32 @@ final class MyCampaignViewModel: ObservableObject {
         case loading, loaded, idle
         case imgError(any DisplayableError)
     }
-    @Published var viewState: State = .loaded
-    @Published var images: [CampaignImage] = []
+    @Published var viewState: State = .idle
 
-    private let campaignService: SupabaseCampaignManager =
-        SupabaseCampaignManager.shared
-
-    func loadImages() async {  // 👈 Quita throws
-        viewState = .loading
-
-        do {
-            try await campaignService.getImagesFromCampaign("12345")
-            images = campaignService.images ?? [] // No olvides asignar
-            viewState = .loaded
-        } catch let imageError as CampaignError {
-            viewState = .imgError(imageError)
-        } catch {  // 👈 Captura TODOS los demás errores
-            // Convertir cualquier error a DisplayableError
-            let displayableError = error as? DisplayableError ?? CampaignError.imgFailed
-            viewState = .imgError(displayableError)
-        }
-    }
-
+    private let campaignManager = SupabaseCampaignManager.shared
+    private var hasLoaded = false
+       
+       func loadImages() async {
+           guard !hasLoaded else { return }
+           hasLoaded = true
+           
+           viewState = .loading
+           do {
+               // Usa el ID real de la campaña
+               guard let campaignId = campaignManager.firstOwnCampaign?.id.uuidString else {
+                   print("Por acá está el error")
+                   throw CampaignError.imgFailed
+               }
+               print("Antes del getimages")
+               try await campaignManager.getImagesFromCampaign(campaignId)
+               viewState = .loaded
+           } catch let imageError as CampaignError {
+               print("Fue aqui en vm1")
+               print(imageError)
+               viewState = .imgError(imageError)
+           } catch {
+               print("Fue aqui en vm2")
+               viewState = .imgError(CampaignError.imgFailed)
+           }
+       }
 }

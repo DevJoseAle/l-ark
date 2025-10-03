@@ -8,7 +8,13 @@ struct ProfileHomeView:View{
             Text("ProfileHomeView")
             
             Button(action: {
-                Task{ await auth.signOutSupabase()}
+//                Task{ await auth.signOutSupabase()}
+                Task{
+                    do{
+                        let user: Any? = try await supabase.auth.user()
+                        print("PROFILE",user ?? "nil")
+                    }
+                }
             }) {
             Text("Logout")
             }

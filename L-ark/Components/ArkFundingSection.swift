@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ArkFundingSection: View {
     let campaign: Campaign
-    @State private var showDetails = false
+    @State private var showDetails = true
     
     // MARK: - Computed Properties
     private var progressPercentage: Double {
@@ -37,15 +37,27 @@ private extension ArkFundingSection {
     
     var totalRaisedSection: some View {
         VStack(alignment: .leading, spacing: ArkUI.Spacing.s) {
-            Text("Total Recaudado:")
-                .foregroundStyle(.white)
-                .font(.system(size: 18, weight: .bold))
-                .padding()
+            VStack(alignment:.leading) {
+                HStack(alignment: .center){
+                    Text("Estatus de la Campaña:")
+                        .foregroundStyle(.customWhite)
+                        .font(.system(size: 18, weight: .bold))
+                        .padding(.top, 10)
+                        .padding(.bottom, 5)
+                    CampaignStatusLabel(campaign.status)
+                }
+                Text("Total Recaudado:")
+                    .foregroundStyle(.customWhite)
+                    .font(.system(size: 18, weight: .bold))
+
+
+            }
+            .padding(.leading, ArkUI.Spacing.m)
 
             HStack(alignment: .firstTextBaseline) {
                 Text("CLP:")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color.customWhite.opacity(0.9))
+                    .foregroundStyle(.customWhite)
                 
                 Text(formattedTotal)
                     .font(.system(size: 40, weight: .semibold))
@@ -64,10 +76,10 @@ private extension ArkFundingSection {
             showDetails.toggle()
         } label: {
             Image(systemName: showDetails ? "eye.slash" : "eye")
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.customWhite)
                 .imageScale(.medium)
                 .padding(8)
-                .background(.white.opacity(0.08), in: Circle())
+                .background(.customWhite.opacity(0.3), in: Circle())
         }
     }
     
@@ -75,12 +87,12 @@ private extension ArkFundingSection {
         VStack(alignment: .leading, spacing: ArkUI.Spacing.s) {
             Text("Tu meta:")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.customWhite)
 
             HStack {
                 Text("CLP: 0")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(Color.customWhite.opacity(0.9))
+                    .foregroundStyle(.customWhite)
                 
                 Spacer()
                 
@@ -101,7 +113,7 @@ private extension ArkFundingSection {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                .strokeBorder(.customWhite.opacity(0.15), lineWidth: 1)
         )
         .padding(.horizontal, ArkUI.Spacing.m)
     }
@@ -117,17 +129,21 @@ private extension ArkFundingSection {
             HStack(spacing: ArkUI.Spacing.m) {
                 ArkCapsuleButton(
                     title: "Compartir",
-                    systemImage: "square.and.arrow.up"
+                    systemImage: "square.and.arrow.up",
+                    disabled: campaign.status != .active
                 ) {
                     shareCampaign()
                 }
                 
+                
                 ArkCapsuleButton(
                     title: "Enviar Link",
-                    systemImage: "link"
+                    systemImage: "link",
+                    disabled: campaign.status != .active
                 ) {
                     sendDonorLink()
                 }
+                
             }
         }
         .frame(maxWidth: .infinity)
@@ -165,19 +181,23 @@ struct ArkCapsuleButton: View {
     let title: String
     let systemImage: String
     let fontSize: CGFloat
+    let disabled: Bool?
     let action: (() -> Void)?
     let destination: AnyView?
+   
     
     // Action initializer
     init(
         title: String,
         systemImage: String,
         fontSize: CGFloat = 15,
+        disabled: Bool? = false,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.systemImage = systemImage
         self.fontSize = fontSize
+        self.disabled = disabled
         self.action = action
         self.destination = nil
     }
@@ -187,15 +207,21 @@ struct ArkCapsuleButton: View {
         title: String,
         systemImage: String,
         fontSize: CGFloat = 15,
+        disabled: Bool? = false,
         destination: Destination
     ) {
         self.title = title
         self.systemImage = systemImage
         self.fontSize = fontSize
+        self.disabled = disabled
         self.action = nil
         self.destination = AnyView(destination)
     }
+     
     
+    private var backgroundColor: Color {
+        return disabled == true ? Color.gray : Color.white
+    }
     var body: some View {
         if let destination = destination {
             NavigationLink(destination: destination) {
@@ -206,6 +232,7 @@ struct ArkCapsuleButton: View {
             Button(action: action) {
                 buttonContent
             }
+            .disabled(disabled ?? true)
         }
     }
     
@@ -218,7 +245,7 @@ struct ArkCapsuleButton: View {
         .font(.system(size: fontSize, weight: .medium))
         .padding(.horizontal, ArkUI.Spacing.l)
         .padding(.vertical, ArkUI.Spacing.m)
-        .background(Color.customWhite, in: Capsule())
+        .background(backgroundColor, in: Capsule())
         .foregroundStyle(.black)
         .contentShape(Capsule())
     }

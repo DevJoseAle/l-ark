@@ -11,178 +11,99 @@ struct MyCampaignView: View {
     @EnvironmentObject private var campaign: SupabaseCampaignManager
     @StateObject private var vm = MyCampaignViewModel()
     private var supabase = SupabaseClientManager.shared.client
-    @State private var images: [CampaignImage] = []
     var body: some View {
-        VStack(alignment: .leading) {
-            Text("Titulo de la campaña: \(campaign.ownCampaign?.title ?? "No hay un titulo")") 
-                .padding(.horizontal)
-
-            content
-            Spacer()
-            Spacer()
-            
-        }
-        .navigationBarTitleDisplayMode(.large)
-        .navigationTitle(Text("Mi Campaña"))
-        .toolbar {
-            ToolbarEditButton(){
-                print("desde aqui")
+        MainBGContainer {
+            VStack(alignment: .leading) {
+                content
+            }
+            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(Text(campaign.firstOwnCampaign?.title ?? "Sin Título"))
+            .toolbar {
+                ToolbarEditButton(text: "Editar", icon: "pencil") {
+                }
+            }
+            .task(id: "load-images") {
+                await vm.loadImages()
+                
             }
         }
-        .task{
-            await vm.loadImages()
-        }
-        
+
     }
     @ViewBuilder
-    private var content: some View{
+    private var content: some View {
         switch vm.viewState {
         case .loading, .idle:
             LoadingView()
         case .loaded:
-            CampaignImageSlider(images: images)
-                .frame(height: 320)
-        case .imgError(let displayableError):
-            ErrorViewCampaign(error: displayableError){
-                Task{}
-            }
-        }
-    }
-}
+            ScrollView {
+                VStack {
+                    CampaignImageSlider(images: campaign.images)
+                        .frame(height: 320)
+                    Divider()
+                    //MARK: Descripcion de Camapaña
+                    if let ownCampaign = campaign.firstOwnCampaign {
+                                   MyCampaignProgress(campaign: ownCampaign)
+                                   
+                                   VStack(alignment: .leading) {
+                                       Text("Descripcion:")
+                                           .padding(.horizontal)
+                                           .padding(.bottom, 8)
+                                           .font(.title2)
+                                           .fontWeight(.bold)
 
+                                       Text(ownCampaign.description ?? "Sin Descripción")
+                                   }
+                                   .padding()
+                               } else {
+                                   Text("No se pudo cargar la información de la campaña")
+                                       .foregroundStyle(.secondary)
+                                       .padding()
+                               }
+                    Divider()
+                    VStack(alignment: .leading){
+                        Text("Beneficiario/s:")
+                            .padding(.horizontal)
+                            .padding(.bottom, 8)
+                            .font(.title2)
+                            .fontWeight(.bold)
+//                        BeneficiaryCard()
+//                        BeneficiaryCard()
 
-//MARK: TollbarEditBtn
-private struct ToolbarEditButton: View {
-    
-    let action: () -> Void
-    
-    var body: some View{
-        HStack(alignment: .center) {
-            Button(
-                action: action,
-                label: {
-                    HStack(alignment: .center) {
-                        Text("Editar")
-                        Image(systemName: "pencil")
                     }
-                }
-            )
-        }
-    }
-}
-//MARK: CampaignImageSlider
-private struct CampaignImageSlider: View {
-    var images: [CampaignImage]
-    @State var scrollID: Int?
-    var body: some View {
-        if images.isEmpty {
-            EmptyImageView()
-        }else{
-           
-        }
-        
-    }
-}
-//MARK: EmptyImageView
-private struct EmptyImageView: View {
-    var body : some View{
-        VStack {
-            Text("No hay Imágenes en esta campaña")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.gray.opacity(0.2))
-        .cornerRadius(20)
-        .padding()
-    }
-}
- //MARK: ImageSliderContent
-private struct ImageSliderContent : View {
-    var images: [CampaignImage]
-    @Binding var scrollID: Int?
-    var body : some View{
-        VStack {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 0) {
-                    ForEach(0..<images.count, id: \.self) { index in
-                        let image = images[index]
-                        VStack {
-                            CampaignImageCard(image: image)
-                        }
-                        
-                        .containerRelativeFrame(.horizontal)
-                        .scrollTransition(.animated, axis: .horizontal) {
-                            content,
-                            phase in
-                            content
-                                .opacity(phase.isIdentity ? 1 : 0.6)
-                        }
-                        
-                    }
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 10)
+                    .padding(.bottom, 75)
                     
-                }.scrollTargetLayout()
-                
+                }
             }
-            .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $scrollID)
-            if images.count > 1 {
-                ScrollIndicator(
-                    imageCount: images.count,
-                    currentImageIndex: scrollID
-                )
+            .scrollIndicators(.never)
+        case .imgError(let displayableError):
+            ErrorViewCampaign(error: displayableError) {
+                Task {}
             }
-            
         }
     }
 }
-//MARK: CampaignImageCard
-private struct CampaignImageCard: View{
-    let image: CampaignImage
-    var body: some View {
-        AsyncImage(url: URL(string: image.imageUrl)) {
-            image in
-            image
-                .resizable()
-                .scaledToFill()
-            
-                .frame(
-                    maxWidth: .infinity,
-                    maxHeight: .infinity
-                )
-            
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 20)
-                )
-                .padding()
-            
-        } placeholder: {
-            ProgressView()
-                .frame(
-                    maxWidth: .infinity,
-                    maxHeight: .infinity
-                )
-        }
-    }
-}
+
 //MARK: Error View
 private struct ErrorViewCampaign: View {
     let error: any DisplayableError
     let retry: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 40))
                 .foregroundColor(.orange)
-            
+
             Text("Error al cargar imágenes")
                 .font(.headline)
-            
+
             Text(error.localizedDescription)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            
+
             Button("Reintentar", action: retry)
                 .buttonStyle(.borderedProminent)
         }
@@ -190,42 +111,127 @@ private struct ErrorViewCampaign: View {
         .frame(height: 320)
     }
 }
-//MARK: SCroll indicator
-private struct ScrollIndicator: View {
-    var imageCount: Int
-    var currentImageIndex: Int?
-    var body: some View {
-        HStack {
-            ForEach(0..<imageCount, id: \.self) { indicator in
-                let index = currentImageIndex ?? 0
-                Image(systemName: "circle.fill")
-                    .foregroundStyle(
-                        indicator == index ? Color.customWhite : Color.gray
+
+#Preview {
+    let manager = SupabaseCampaignManager.shared
+
+    NavigationStack {
+        MyCampaignView()
+            .environmentObject(manager)
+            .task {
+                if manager.firstOwnCampaign == nil {
+                    try? await manager.getOwnCampaignAction(
+                        "b7a5e3b2-1111-4f1a-9d01-000000000001"
                     )
-                
+                }
+            }
+
+    }
+}
+
+//#Preview {
+//    BeneficiaryCard()
+//}
+//struct BeneficiaryCard: View {
+//    
+//    //MARK: Cambiar por user
+//    var body: some View{
+//        HStack {
+//            AsyncImage(url: URL(string:"https://picsum.photos/800/600?random=10") , scale: 0.9)
+//                .frame(width: 60, height: 60)
+//                .clipShape(Circle())
+//            VStack(alignment: .leading){
+//                Text("Nombre y Apellido")
+//                    .font(.title3)
+//                    .fontWeight(.semibold)
+//                Text("Parentesco")
+//                    .font(.callout)
+//                    .fontWeight(.semibold)
+//                    .foregroundStyle(.secondary)
+//                
+//            }
+//            .padding()
+//            
+//            VStack{
+//                Text("%")
+//                    .font(.title3)
+//                    .fontWeight(.semibold)
+//                Text("50%")
+//                    .font(.callout)
+//                    .fontWeight(.semibold)
+//                    .foregroundStyle(.secondary)
+//            }
+//            
+//        }
+//        .frame(maxWidth: .infinity, maxHeight: 100)
+//        .overlay(){
+//            RoundedRectangle(cornerRadius: 10)
+//                .stroke(Color.gray.opacity(0.4), lineWidth: 1)
+//        }
+//        .padding(.horizontal, 15)
+//    }
+//}
+struct MyCampaignProgress: View {
+    var campaign: Campaign
+    private var progressPercentage: Double {
+        guard let goal = campaign.goalAmount, goal > 0 else { return 0 }
+        return min(Double(campaign.totalRaised) / Double(goal), 1.0)
+    }
+    private var progressText: String {
+        let percentage = Int(progressPercentage * 100)
+        return "¡Llevas un \(percentage)% de tu meta!"
+    }
+    var backgroundGradient: some View {
+        LinearGradient(
+            colors: [
+                Color.cardMediumBlue,
+                Color.cardDarkBlue,
+                Color.cardLightBlue
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    var body: some View {
+
+        VStack(alignment: .leading, spacing: ArkUI.Spacing.s) {
+            Text("Tu meta:")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.customWhite.opacity(0.9))
+
+            HStack {
+                Text("CLP: 0")
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(.customWhite.opacity(0.9))
+
+                Spacer()
+
+                if let goalAmount = campaign.goalAmount {
+                    Text("CLP: \(Formatters.formatAmount(goalAmount))")
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.customWhite.opacity(0.9))
+                }
+            }
+
+            GradientProgressBar(value: progressPercentage)
+
+            Text(progressText)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.customWhite.opacity(0.9))
+            HStack {
+                Text("Status de la campaña: ")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.customWhite.opacity(0.9))
+                CampaignStatusLabel(campaign.status)
             }
         }
-        .padding(.all, 5)
-        .background(Color.gray.opacity(0.3))
-        .cornerRadius(15)
+        .padding(ArkUI.Spacing.m)
+        .background(backgroundGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .padding(.horizontal, ArkUI.Spacing.m)
     }
 }
-//MARK: LoadingView
-private struct LoadingView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("Loading...")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity,maxHeight: .infinity)
-    }
-}
-#Preview {
-    NavigationStack{
-        MyCampaignView()
-            .environmentObject(SupabaseCampaignManager.shared)
-    }
-   
-}
+
+
+

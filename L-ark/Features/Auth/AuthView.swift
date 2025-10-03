@@ -9,7 +9,6 @@ import SwiftUI
 
 struct AuthView: View {
     @State private var goToLogin = false
-    @State private var goToProfile = false
     @EnvironmentObject var appState: AppState
     @EnvironmentObject private var authVM: AuthenticationViewModel
     
@@ -18,11 +17,30 @@ struct AuthView: View {
             MainBGContainer {
                 VStack {
                     Spacer()
+                    VStack(spacing: 0) {
+                        Image("LarkLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 250, height: 250)
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                        
+                        Text("L-Ark")
+                            .font(.system(size: 52, weight: .regular, design: .rounded))
+                            .italic(true)
+                            .foregroundColor(.invertedText)
+                        Text("Digital Heritage")
+                            .font(.system(size: 22, weight: .light, design: .rounded))
+                            .italic(true)
+                            .foregroundColor(.invertedText)
+                    }
+                    
+                    Spacer()
                     VStack {
                         
                         OnboardingScreenButton(
                             title: "Iniciar con Email y Contraseña",
-                            fill: .none,
+                            fill: .color(.customWhite),
+                            textColor: .black.opacity(0.6)
                         ){
                             goToLogin = true
                         }
@@ -54,5 +72,7 @@ struct AuthView: View {
 }
 
 #Preview {
-    AuthView().environmentObject(AppState())
+    AuthView()
+        .environmentObject(AppState())
+        .environmentObject(AuthenticationViewModel(appState: AppState()))
 }
