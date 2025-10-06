@@ -24,7 +24,10 @@ struct KYCGateway: View {
              default:
                 KYCOnboardingFlow()
             }
-        }
+                
+        }.onAppear{
+            print(appState.currentUser?.kycStatus ?? "No hay status")
+    }
     }
 }
 
@@ -32,7 +35,7 @@ struct KYCGateway: View {
     KYCGateway()
         .environmentObject(AppState())
 }
-#Preview("Review") {
-    KYCGateway()
-        .environmentObject(AppState.mockPending)
-}
+//    #Preview("Review") {
+//        KYCGateway()
+//            .environmentObject(AppState.mockPending)
+//    }

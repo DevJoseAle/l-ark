@@ -33,9 +33,92 @@ class CreateCampaignViewModel: ObservableObject {
     @Published var showSuccessToast = false
     @Published var successMessage = ""
     
+    @Published var hasDiagnosis: Bool = false
+    @Published var selectedDiagnosisImages: [PhotosPickerItem] = []
+    @Published var diagnosisImages: [DocumentUpload] = []
     private let service = SupabaseCampaignManager()
     private var searchTask: Task<Void, Never>?
     
+    
+    private var editingCampaignId: UUID?
+    var isEditMode: Bool { editingCampaignId != nil }
+       
+       // ✅ Init por defecto (crear nueva)
+       init() {
+           self.editingCampaignId = nil
+       }
+       
+       // ✅ Init para edición
+
+    init(editingCampaign: Campaign) {
+        self.editingCampaignId = editingCampaign.id
+        
+        // Cargar datos existentes
+        self.title = editingCampaign.title
+        self.description = editingCampaign.description ?? ""
+        self.goalAmount = editingCampaign.goalAmount.map { String(Int($0)) } ?? ""
+        self.softCap = editingCampaign.softCap.map { String(Int($0)) } ?? ""
+        self.hardCap = editingCampaign.hardCap.map { String(Int($0)) } ?? ""
+        self.currency = editingCampaign.currency
+        
+        if let vis = CampaignVisibility(rawValue: editingCampaign.visibility.rawValue) {
+            self.visibility = vis
+        } else {
+            self.visibility = .publicCampaign
+        }
+        
+        self.startDate = editingCampaign.startAt ?? Date()
+        self.endDate = editingCampaign.endAt ?? Date()
+        
+
+        if let ruleRaw = editingCampaign.beneficiaryRule,
+           let rule = BeneficiaryRule(rawValue: ruleRaw.rawValue) {
+            self.beneficiaryRule = rule
+        } else {
+            self.beneficiaryRule = .fixedShares
+        }
+        
+        self.hasDiagnosis = editingCampaign.hasDiagnosis
+        
+        // Cargar imágenes y beneficiarios en Task
+        Task {
+            await loadExistingData(campaignId: editingCampaign.id)
+        }
+    }
+    //MARK: LoadExistingData
+    private func loadExistingData(campaignId: UUID) async {
+        // Cargar imágenes de campaña
+        do {
+            try await service.getImagesFromCampaign(campaignId.uuidString)
+            // Las imágenes ya están en service.images, no necesitas hacer nada más
+        } catch {
+            print("Error cargando imágenes: \(error)")
+        }
+        
+        // Cargar beneficiarios
+        do {
+            let beneficiariesData = try await service.getBeneficiariesForCampaign(campaignId: campaignId)
+            
+            // Convertir a BeneficiaryDraft
+            await MainActor.run {
+                self.beneficiaries = beneficiariesData.compactMap { beneficiary in
+                    guard let user = beneficiary.user else { return nil }
+                    
+                    let shareType = BeneficiaryShareType(rawValue: beneficiary.shareType.rawValue) ?? .percent
+                    
+                    return BeneficiaryDraft(
+                        email: user.email,
+                        user: user,
+                        shareType: shareType,
+                        shareValue: beneficiary.shareValue,
+                        priority: beneficiary.priority
+                    )
+                }
+            }
+        } catch {
+            print("Error cargando beneficiarios: \(error)")
+        }
+    }
     // MARK: - Computed Properties
     
     var isFormValid: Bool {
@@ -85,6 +168,31 @@ class CreateCampaignViewModel: ObservableObject {
         selectedImages.removeAll()
     }
     
+    func loadSelectedDiagnosisImages() async {
+        for item in selectedDiagnosisImages {
+            guard canAddMoreDiagnosisImages else { break }
+            
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let uiImage = UIImage(data: data),
+               let compressedData = uiImage.jpegData(compressionQuality: 0.7) {
+                
+                let fileName = "\(UUID().uuidString)_diagnosis.jpg"
+                let document = DocumentUpload(
+                    data: compressedData,
+                    fileName: fileName,
+                    mimeType: "image/jpeg"
+                )
+                diagnosisImages.append(document)
+            }
+        }
+        
+        selectedDiagnosisImages.removeAll()
+    }
+
+    func removeDiagnosisImage(at index: Int) {
+        guard index < diagnosisImages.count else { return }
+        diagnosisImages.remove(at: index)
+    }
     func removeImage(at index: Int) {
         guard index < campaignImages.count else { return }
         campaignImages.remove(at: index)
@@ -185,6 +293,9 @@ class CreateCampaignViewModel: ObservableObject {
             beneficiaries[index].relationshipDocs.removeAll { $0.id == documentId }
         }
     }
+    var canAddMoreDiagnosisImages: Bool {
+        diagnosisImages.count < 3
+    }
     
     // MARK: - Create Campaign
     
@@ -259,9 +370,11 @@ class CreateCampaignViewModel: ObservableObject {
                     currency: currency,
                     visibility: visibility,
                     startAt: startDate,
+                    hasDiagnosis: hasDiagnosis,
                     endAt: endDate,
                     beneficiaryRule: beneficiaryRule,
                     campaignImages: campaignImages,
+                    diagnosisImages: diagnosisImages,
                     beneficiaries: beneficiaries
                 )
                 
@@ -313,5 +426,59 @@ class CreateCampaignViewModel: ObservableObject {
         errorMessage = nil
         showError = false
         campaignCreated = false
+        hasDiagnosis = false
+        selectedDiagnosisImages = []
+        diagnosisImages = []
+    }
+    func updateCampaign(homeViewModel: HomeViewModel, appState: AppState) async {
+        guard let campaignId = editingCampaignId else {
+            await createCampaign(
+                ownerUserId: appState.currentUser!.id,
+                homeViewModel: homeViewModel,
+                appState: appState
+            )
+            return
+        }
+        
+        // Lógica de actualización
+        isCreating = true
+        errorMessage = nil
+        
+        do {
+            let goal = Double(goalAmount.replacingOccurrences(of: ",", with: "")) ?? nil
+            let soft = Double(softCap.replacingOccurrences(of: ",", with: "")) ?? nil
+            let hard = Double(hardCap.replacingOccurrences(of: ",", with: "")) ?? nil
+            
+            try await service.updateCampaign(
+                campaignId: campaignId,
+                title: title,
+                description: description.isEmpty ? nil : description,
+                goalAmount: goal,
+                softCap: soft,
+                hardCap: hard,
+                currency: currency,
+                visibility: visibility,
+                startAt: startDate,
+                endAt: endDate,
+                beneficiaryRule: beneficiaryRule,
+                hasDiagnosis: hasDiagnosis
+                // Las imágenes y beneficiarios se manejan por separado
+            )
+            
+            await homeViewModel.loadInitialData(appState)
+            
+            successMessage = "Campaña actualizada exitosamente"
+            showSuccessToast = true
+            campaignCreated = true
+            
+        } catch let error as CampaignError {
+            errorMessage = error.userMessage
+            showError = true
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+        
+        isCreating = false
     }
 }

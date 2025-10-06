@@ -10,6 +10,7 @@ import SwiftUI
 struct MyCampaignView: View {
     @EnvironmentObject private var campaign: SupabaseCampaignManager
     @StateObject private var vm = MyCampaignViewModel()
+    @StateObject private var homeViewModel: HomeViewModel = HomeViewModel()
     private var supabase = SupabaseClientManager.shared.client
     var body: some View {
         MainBGContainer {
@@ -19,9 +20,18 @@ struct MyCampaignView: View {
             .navigationBarTitleDisplayMode(.large)
             .navigationTitle(Text(campaign.firstOwnCampaign?.title ?? "Sin Título"))
             .toolbar {
-                ToolbarEditButton(text: "Editar", icon: "pencil") {
+                NavigationLink {
+                    if let campaign = campaign.firstOwnCampaign {
+                        CreateCampaignView(homeViewModel: homeViewModel, campaign: campaign)
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "pencil")
+                        Text("Editar")
+                    }
                 }
             }
+
             .task(id: "load-images") {
                 await vm.loadImages()
                 

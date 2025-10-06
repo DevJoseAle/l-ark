@@ -8,6 +8,10 @@ final class VaultViewModel: ObservableObject {
     @Published var errorText: String?
     @Published var uploadProgress: Double = 0
     
+    // ✅ Flags específicos por operación
+    @Published var isUploading = false
+    @Published var isDeleting = false
+    
     // Estado de campaña
     @Published var activeCampaign: Campaign?
     @Published var hasNoCampaign = false
@@ -15,7 +19,7 @@ final class VaultViewModel: ObservableObject {
     // Estado de suscripción
     @Published var currentPlan: String = "free"
     @Published var storageUsed: Int64 = 0
-    @Published var storageQuota: Int64 = 500 * 1024 * 1024 // 500MB default
+    @Published var storageQuota: Int64 = 500 * 1024 * 1024
     
     private let api: SupabaseVaultManager
     private let supabase: SupabaseClient
@@ -28,19 +32,20 @@ final class VaultViewModel: ObservableObject {
     // MARK: - Lifecycle
     
     func onAppear() async {
+        isLoading = true
+        defer { isLoading = false }
+        
         await loadActiveCampaign()
+        
         if activeCampaign != nil {
             await loadSubscriptionInfo()
-            await refresh()
+            await refreshInternal()
         }
     }
     
     // MARK: - Campaign Management
     
     private func loadActiveCampaign() async {
-        isLoading = true
-        defer { isLoading = false }
-        
         do {
             let user = try await supabase.auth.session.user
             
@@ -67,7 +72,7 @@ final class VaultViewModel: ObservableObject {
     
     // MARK: - Subscription Info
     
-    private func loadSubscriptionInfo() async {
+     func loadSubscriptionInfo() async {
         guard let campaign = activeCampaign else { return }
         
         do {
@@ -99,16 +104,24 @@ final class VaultViewModel: ObservableObject {
     
     // MARK: - File Operations
     
+    // ✅ Versión pública con loading (para pull-to-refresh)
     func refresh() async {
         guard let campaign = activeCampaign else { return }
         
         isLoading = true
         defer { isLoading = false }
         
+        await refreshInternal()
+    }
+    
+    // ✅ Versión interna sin loading (para uso interno)
+    private func refreshInternal() async {
+        guard let campaign = activeCampaign else { return }
+        
         do {
             let res = try await api.listFiles(campaignId: campaign.id)
             items = res.items
-            await loadSubscriptionInfo() // Actualizar storage usado
+            await loadSubscriptionInfo()
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -120,10 +133,11 @@ final class VaultViewModel: ObservableObject {
             return
         }
         
-        isLoading = true
+        // ✅ Flag específico para upload
+        isUploading = true
         uploadProgress = 0
         defer {
-            isLoading = false
+            isUploading = false
             uploadProgress = 0
         }
         
@@ -133,27 +147,38 @@ final class VaultViewModel: ObservableObject {
                     self.uploadProgress = progress
                 }
             }
-            // ✅ Siempre refrescar después de subir para obtener los IDs correctos
-            await refresh()
+            await refreshInternal() // ✅ Sin isLoading adicional
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
     }
     
     func delete(id: UUID) async {
+        print("🗑️ DELETE: Iniciando eliminación de archivo ID: \(id)")
+        
+        // ✅ Flag específico para delete
+        isDeleting = true
+        defer { isDeleting = false }
+        
         do {
             try await api.deleteFile(fileId: id)
+            print("✅ DELETE: Archivo eliminado exitosamente")
             items.removeAll { $0.id == id }
-            await loadSubscriptionInfo() // Actualizar storage usado
+            await loadSubscriptionInfo()
         } catch {
+            print("❌ DELETE: Error eliminando: \(error)")
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
     }
     
     func downloadURL(for id: UUID) async -> URL? {
+        print("🔍 DESCARGA: Solicitando URL para archivo ID: \(id)")
         do {
-            return try await api.downloadURL(for: id)
+            let url = try await api.downloadURL(for: id)
+            print("✅ DESCARGA: URL obtenida exitosamente: \(url)")
+            return url
         } catch {
+            print("❌ DESCARGA: Error obteniendo URL: \(error)")
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             return nil
         }
@@ -177,5 +202,9 @@ final class VaultViewModel: ObservableObject {
     var isFreePlan: Bool {
         currentPlan.lowercased() == "free"
     }
+    
+    // ✅ Helper para saber si hay alguna operación en curso
+    var isPerformingOperation: Bool {
+        isLoading || isUploading || isDeleting
+    }
 }
-

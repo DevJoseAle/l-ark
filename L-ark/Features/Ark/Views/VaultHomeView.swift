@@ -1,7 +1,11 @@
 import SwiftUI
+import StoreKit
 
 struct VaultHomeView: View {
     @StateObject var vm: VaultViewModel
+    @StateObject private var storeManager = StoreManager()
+    @State private var showingPurchaseSuccess = false
+    @State private var showingPurchaseError = false// ✅ Agregar
     @State private var showingPicker = false
     @State private var showingUpgradeToPro = false
 
@@ -14,16 +18,48 @@ struct VaultHomeView: View {
                     mainVaultView
                 }
                 
-                if vm.isLoading && vm.uploadProgress == 0 {
+                // ✅ Mostrar loading para cualquier operación
+                if vm.isPerformingOperation && vm.uploadProgress == 0 {
                     ProgressView()
                         .scaleEffect(1.5)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.black.opacity(0.3))
                 }
+                if vm.isUploading && vm.uploadProgress > 0 {
+                               VStack(spacing: 16) {
+                                   ProgressView(value: vm.uploadProgress)
+                                       .progressViewStyle(.linear)
+                                       .frame(width: 200)
+                                   
+                                   Text("Subiendo \(Int(vm.uploadProgress * 100))%")
+                                       .font(.subheadline)
+                                       .foregroundStyle(.white)
+                               }
+                               .padding(24)
+                               .background(Color.black.opacity(0.8))
+                               .cornerRadius(16)
+                           }
+                           
+                           // ✅ Overlay específico de delete
+                if vm.isDeleting {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Eliminando archivo...")
+                            .font(.subheadline)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(24)
+                    .background(Color.black.opacity(0.8))
+                    .cornerRadius(16)
+                }
             }
         }
         .task {
             await vm.onAppear()
+            storeManager.currentCampaignId = vm.activeCampaign?.id
+            await storeManager.loadProducts()
+            await storeManager.checkAndSyncSubscription()
+            await vm.loadSubscriptionInfo()
         }
         .fileImporter(
             isPresented: $showingPicker,
@@ -36,6 +72,26 @@ struct VaultHomeView: View {
         }
         .sheet(isPresented: $showingUpgradeToPro) {
             upgradeToProSheet
+        }
+        .alert("Compra exitosa", isPresented: $showingPurchaseSuccess) {
+            Button("Continuar") {
+                showingUpgradeToPro = false
+                Task { await vm.refresh() }
+            }
+        } message: {
+            Text("Tu suscripción Pro está activa. Disfruta de 5 GB de almacenamiento!")
+        }
+        .alert("Error en la compra", isPresented: $showingPurchaseError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(storeManager.errorMessage ?? "Ocurrió un error desconocido")
+        }
+        .onChange(of: storeManager.purchaseState) { oldValue, newValue in
+            if case .success = newValue {
+                showingPurchaseSuccess = true
+            } else if case .failed = newValue {
+                showingPurchaseError = true
+            }
         }
     }
     
@@ -303,8 +359,10 @@ struct VaultHomeView: View {
             // Botones de acción
             HStack(spacing: 16) {
                 Button {
+                    print("🔽 BOTÓN DESCARGA PRESIONADO para: \(file.file_name)")
                     Task {
                         if let url = await vm.downloadURL(for: file.id) {
+                            print("✅ Abriendo URL: \(url)")
                             await UIApplication.shared.open(url)
                         }
                     }
@@ -313,17 +371,21 @@ struct VaultHomeView: View {
                         .font(.title3)
                         .foregroundStyle(.blue)
                 }
+                .buttonStyle(.borderless) // ✅ CRÍTICO: Evita propagación del tap
                 
                 Button(role: .destructive) {
+                    print("🗑️ BOTÓN DELETE PRESIONADO para: \(file.file_name)")
                     Task { await vm.delete(id: file.id) }
                 } label: {
                     Image(systemName: "trash")
                         .font(.title3)
                         .foregroundStyle(.red)
                 }
+                .buttonStyle(.borderless) // ✅ CRÍTICO: Evita propagación del tap
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle()) // ✅ Define el área tappable explícitamente
     }
     
     private func fileIcon(for type: VaultFileType) -> some View {
@@ -372,56 +434,72 @@ struct VaultHomeView: View {
     
     private var upgradeToProSheet: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 80))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.orange, .pink],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .padding(.top, 40)
-                
-                Text("Actualiza a Pro")
-                    .font(.title.bold())
-                
-                VStack(alignment: .leading, spacing: 16) {
-                    featureRow(icon: "opticaldiscdrive", text: "5 GB de almacenamiento")
-                    featureRow(icon: "bolt.fill", text: "Subidas más rápidas")
-                    featureRow(icon: "lock.shield.fill", text: "Seguridad mejorada")
-                    featureRow(icon: "star.fill", text: "Soporte prioritario")
-                }
-                .padding()
-                
-                Spacer()
-                
-                VStack(spacing: 12) {
-                    Button {
-                        // Implementar compra IAP
-                    } label: {
-                        Text("Actualizar a Pro - $9.99/mes")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                LinearGradient(
-                                    colors: [.orange, .pink],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.orange, .pink],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .cornerRadius(12)
+                        )
+                        .padding(.top, 40)
+                    
+                    Text("Actualiza a Pro")
+                        .font(.title.bold())
+                    
+                    Text("Desbloquea todo el potencial de tu Bóveda")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    // Features
+                    VStack(alignment: .leading, spacing: 16) {
+                        featureRow(icon: "opticaldiscdrive", text: "5 GB de almacenamiento")
+                        featureRow(icon: "bolt.fill", text: "Subidas más rápidas")
+                        featureRow(icon: "lock.shield.fill", text: "Seguridad mejorada")
+                        featureRow(icon: "star.fill", text: "Soporte prioritario")
+                    }
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                    
+                    // Products
+                    if storeManager.isLoading {
+                        ProgressView("Cargando planes...")
+                            .padding()
+                    } else if storeManager.products.isEmpty {
+                        Text("No se pudieron cargar los planes")
+                            .foregroundStyle(.secondary)
+                            .padding()
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(storeManager.products, id: \.id) { product in
+                                productCard(for: product)
+                            }
+                        }
+                        .padding(.horizontal)
                     }
                     
+                    if let error = storeManager.errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal)
+                    }
+                    
+                    // Dismiss button
                     Button("Más tarde") {
                         showingUpgradeToPro = false
                     }
                     .foregroundStyle(.secondary)
+                    .padding(.bottom, 32)
                 }
-                .padding()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -431,9 +509,89 @@ struct VaultHomeView: View {
                     }
                 }
             }
+        }.overlay {
+            if case .purchasing = storeManager.purchaseState {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .overlay {
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .tint(.white)
+                            Text("Procesando compra...")
+                                .foregroundStyle(.white)
+                                .font(.headline)
+                        }
+                        .padding(32)
+                        .background(Color.black.opacity(0.8))
+                        .cornerRadius(16)
+                    }
+            }
         }
     }
-    
+
+    private func productCard(for product: Product) -> some View {
+        Button {
+            Task {
+                await storeManager.purchase(product)
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(product.displayName)
+                            .font(.headline)
+                        
+                        if product.id == VaultProduct.proYearly.rawValue {
+                            Text("10% OFF")
+                                .font(.caption2)
+                                .bold()
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.green)
+                                .cornerRadius(4)
+                        }
+                    }
+                    
+                    Text(product.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(product.displayPrice)
+                        .font(.title3)
+                        .bold()
+                    
+                    if product.id == VaultProduct.proYearly.rawValue {
+                        Text("CLP 6.750/mes")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("por mes")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.blue.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.blue, lineWidth: 2)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(storeManager.purchaseState == .purchasing) // Deshabilitar durante compra
+        .opacity(storeManager.purchaseState == .purchasing ? 0.6 : 1.0)
+    }
+
     private func featureRow(icon: String, text: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)

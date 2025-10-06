@@ -72,10 +72,11 @@ struct ImagePickerCard: View {
     let images: [DocumentUpload]
     let onRemove: (Int) -> Void
     let maxImages: Int = 3
+    let title: String
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Imágenes de la campaña (máx. 3)")
+            Text("\(title) (máx. 3)")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.primary)
             
@@ -244,7 +245,8 @@ struct ImagePickerCard: View {
     ImagePickerCard(
         selectedImages: .constant([]),
         images: [],
-        onRemove: { _ in }
+        onRemove: { _ in },
+        title: "Cualquier String"
     )
     .padding()
     .background(Color(.systemGroupedBackground))
@@ -267,7 +269,8 @@ struct ImagePickerCard: View {
         ],
         onRemove: { index in
             print("Removiendo imagen en index: \(index)")
-        }
+        },
+        title: "Cualquier String"
     )
     .padding()
     .background(Color(.systemGroupedBackground))
@@ -293,7 +296,8 @@ struct ImagePickerCard: View {
                 mimeType: "image/jpeg"
             )
         ],
-        onRemove: { _ in }
+        onRemove: { _ in },
+        title: "Cualquier String"
     )
     .padding()
     .background(Color(.systemGroupedBackground))
@@ -324,7 +328,8 @@ struct ImagePickerCard: View {
                         mimeType: "image/jpeg"
                     )
                 ],
-                onRemove: { _ in }
+                onRemove: { _ in },
+                title: "Cualquier String"
             )
             
             CustomTextField(

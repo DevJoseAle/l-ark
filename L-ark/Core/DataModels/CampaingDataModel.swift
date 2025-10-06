@@ -146,6 +146,7 @@ struct Campaign: Codable, Identifiable {
     let endAt: Date?
     let totalRaised: Double
     let beneficiaryRule: BeneficiaryRule?
+    var hasDiagnosis: Bool
     let createdAt: Date
     let updatedAt: Date
     
@@ -170,6 +171,7 @@ struct Campaign: Codable, Identifiable {
         case endAt = "end_at"
         case totalRaised = "total_raised"
         case beneficiaryRule = "beneficiary_rule"
+        case hasDiagnosis = "has_diagnosis"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -191,6 +193,7 @@ extension Campaign {
             endAt: Calendar.current.date(byAdding: .day, value: 30, to: Date()),
             totalRaised: 150000,
             beneficiaryRule: .singleBeneficiary,
+            hasDiagnosis: true,
             createdAt: Date(),
             updatedAt: Date(),
             owner: nil,
@@ -210,6 +213,7 @@ struct CampaignBeneficiary: Codable, Identifiable {
     let isActive: Bool
     let createdAt: Date
     let updatedAt: Date
+    let user: SupabaseUser? 
     
     // Relaciones opcionales
     var campaign: Campaign?
@@ -225,6 +229,7 @@ struct CampaignBeneficiary: Codable, Identifiable {
         case isActive = "is_active"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case user = "users"
     }
 }
 
@@ -535,6 +540,7 @@ struct CampaignInsert: Encodable {
     let status: String
     let visibility: String
     let startAt: Date?
+    let hasDiagnosis: Bool?
     let endAt: Date?
     let beneficiaryRule: String?
     
@@ -549,8 +555,10 @@ struct CampaignInsert: Encodable {
         case status
         case visibility
         case startAt = "start_at"
+        case hasDiagnosis = "has_diagnosis" 
         case endAt = "end_at"
         case beneficiaryRule = "beneficiary_rule"
+        
     }
 }
 
