@@ -30,6 +30,16 @@
     <string>Necesitamos acceso a tu cámara para verificar tu identidad mediante fotos de tu documento y selfie</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Necesitamos acceso a tus fotos para seleccionar documentos de identidad</string>
-        
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Necesitamos acceso a tu galería para subir fotos a la Bóveda</string>
+
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Necesitamos acceso para guardar archivos en tu galería</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>Necesitamos acceso a tu cámara para tomar fotos</string>
+
+    <key>UISupportsDocumentBrowser</key>
+    <true/>
 </dict>
 </plist>

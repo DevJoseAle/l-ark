@@ -212,6 +212,9 @@ final class SupabaseCampaignManager: ObservableObject {
         let fileName = "\(beneficiaryUserId.uuidString)_\(index)_\(UUID().uuidString)_\(document.fileName)"
         let filePath = "beneficiaries/\(campaignId.uuidString)/\(beneficiaryUserId.uuidString)/\(fileName)"
         
+        print("📤 Subiendo documento de beneficiario \(index):")
+        print("  - Path: \(filePath)")
+        
         do {
             try await supabase.storage
                 .from("campaign-media")
@@ -219,9 +222,12 @@ final class SupabaseCampaignManager: ObservableObject {
                     path: filePath,
                     file: document.data,
                     options: FileOptions(
-                        contentType: document.mimeType
+                        contentType: document.mimeType,
+                        upsert: false
                     )
                 )
+            
+            print("✅ Documento de beneficiario subido")
             
             let publicURL = try supabase.storage
                 .from("campaign-media")
@@ -229,10 +235,106 @@ final class SupabaseCampaignManager: ObservableObject {
             
             return publicURL.absoluteString
         } catch {
-            throw CampaignError.uploadFailed("No se pudo subir \(document.fileName)")
+            print("❌ Error subiendo documento beneficiario: \(error)")
+            throw CampaignError.uploadFailed("Documento beneficiario: \(error.localizedDescription)")
         }
     }
-    
+    // ✅ CORRECCIÓN 3: Agregar función para obtener beneficiarios
+    func getBeneficiariesForCampaign(campaignId: UUID) async throws -> [CampaignBeneficiary] {
+        let beneficiaries: [CampaignBeneficiary] = try await supabase
+            .from("campaign_beneficiaries")
+            .select("""
+                *,
+                users!beneficiary_user_id (
+                    id,
+                    display_name,
+                    email,
+                    phone,
+                    country,
+                    kyc_status,
+                    default_currency,
+                    pin_set,
+                    created_at,
+                    updated_at
+                )
+            """)
+            .eq("campaign_id", value: campaignId.uuidString)
+            .eq("is_active", value: true)
+            .order("priority", ascending: true)
+            .execute()
+            .value
+        
+        return beneficiaries
+    }
+
+    // ✅ CORRECCIÓN 4: Agregar función para actualizar campaña
+    func updateCampaign(
+        campaignId: UUID,
+        title: String,
+        description: String?,
+        goalAmount: Double?,
+        softCap: Double?,
+        hardCap: Double?,
+        currency: String,
+        visibility: CampaignVisibility,
+        startAt: Date?,
+        endAt: Date?,
+        beneficiaryRule: BeneficiaryRule?,
+        hasDiagnosis: Bool
+    ) async throws {
+        struct CampaignUpdate: Codable {
+            let title: String
+            let description: String?
+            let goalAmount: Double?
+            let softCap: Double?
+            let hardCap: Double?
+            let currency: String
+            let visibility: String
+            let startAt: Date?
+            let endAt: Date?
+            let beneficiaryRule: String?
+            let hasDiagnosis: Bool
+            
+            enum CodingKeys: String, CodingKey {
+                case title
+                case description
+                case goalAmount = "goal_amount"
+                case softCap = "soft_cap"
+                case hardCap = "hard_cap"
+                case currency
+                case visibility
+                case startAt = "start_at"
+                case endAt = "end_at"
+                case beneficiaryRule = "beneficiary_rule"
+                case hasDiagnosis = "has_diagnosis"
+            }
+        }
+        
+        let update = CampaignUpdate(
+            title: title,
+            description: description,
+            goalAmount: goalAmount,
+            softCap: softCap,
+            hardCap: hardCap,
+            currency: currency,
+            visibility: visibility.rawValue,
+            startAt: startAt,
+            endAt: endAt,
+            beneficiaryRule: beneficiaryRule?.rawValue,
+            hasDiagnosis: hasDiagnosis
+        )
+        
+        let _: Campaign = try await supabase
+            .from("campaigns")
+            .update(update)
+            .eq("id", value: campaignId.uuidString)
+            .select()
+            .single()
+            .execute()
+            .value
+        
+        invalidateOwnCampaigns()
+    }
     // MARK: - Validaciones
     
     func validateBeneficiaries(_ beneficiaries: [BeneficiaryDraft]) -> Bool {
@@ -308,9 +410,11 @@ final class SupabaseCampaignManager: ObservableObject {
         currency: String,
         visibility: CampaignVisibility,
         startAt: Date?,
+        hasDiagnosis: Bool,
         endAt: Date?,
         beneficiaryRule: BeneficiaryRule?,
         campaignImages: [DocumentUpload],
+        diagnosisImages: [DocumentUpload], 
         beneficiaries: [BeneficiaryDraft]
     ) async throws -> Campaign {
         
@@ -348,6 +452,7 @@ final class SupabaseCampaignManager: ObservableObject {
             status: CampaignStatus.draft.rawValue,
             visibility: visibility.rawValue,
             startAt: startAt,
+            hasDiagnosis: hasDiagnosis,
             endAt: endAt,
             beneficiaryRule: beneficiaryRule?.rawValue
         )
@@ -386,7 +491,16 @@ final class SupabaseCampaignManager: ObservableObject {
                     .value
             }
         }
-        
+        // Subir imágenes de diagnóstico si existen
+        if hasDiagnosis && !diagnosisImages.isEmpty {
+            for (index, image) in diagnosisImages.enumerated() {
+                _ = try await uploadDiagnosisImage(
+                    image,
+                    campaignId: createdCampaign.id,
+                    index: index
+                )
+            }
+        }
         // Crear beneficiarios
         for (index, beneficiary) in beneficiaries.enumerated() {
             guard let user = beneficiary.user else { continue }
@@ -424,6 +538,45 @@ final class SupabaseCampaignManager: ObservableObject {
         invalidateOwnCampaigns()
         
         return createdCampaign
+    }
+    
+    func uploadDiagnosisImage(_ document: DocumentUpload, campaignId: UUID, index: Int) async throws -> String {
+        let fileName = "\(campaignId.uuidString)_diagnosis_\(index)_\(UUID().uuidString)_\(document.fileName)"
+        let filePath = "campaigns/\(campaignId.uuidString)/diagnosis/\(fileName)"
+        
+        print("📤 Subiendo diagnóstico \(index):")
+        print("  - Bucket: campaign-diagnosis")
+        print("  - Path: \(filePath)")
+        print("  - Size: \(document.data.count) bytes")
+        print("  - MIME: \(document.mimeType)")
+        
+        do {
+            try await supabase.storage
+                .from("campaign-diagnosis")
+                .upload(
+                    filePath,
+                    data: document.data,
+                    options: FileOptions(
+                        contentType: document.mimeType,
+                        upsert: false
+                    )
+                )
+            
+            print("✅ Diagnóstico subido exitosamente")
+            
+            let publicURL = try supabase.storage
+                .from("campaign-diagnosis")
+                .getPublicURL(path: filePath)
+            
+            print("✅ URL pública generada: \(publicURL.absoluteString)")
+            
+            return publicURL.absoluteString
+        } catch {
+            print("❌ Error detallado subiendo diagnóstico:")
+            print("  - Error: \(error)")
+            print("  - Descripción: \(error.localizedDescription)")
+            throw CampaignError.uploadFailed("Diagnóstico \(document.fileName): \(error.localizedDescription)")
+        }
     }
 }
 

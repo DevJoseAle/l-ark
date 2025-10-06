@@ -1,75 +1,56 @@
-//
-//  CustomTabBar.swift
-//  L-ark
-//
-//  Created by Jose Rodriguez on 26-09-25.
-//
-
 import SwiftUI
 
-//MARK:EnumTabView
+// MARK: - TabItem
 struct TabItem {
     let name: String
     let systemImage: String
     var color: Color
 }
-enum TabViewEnum: Identifiable, CaseIterable, View {
+
+// MARK: - TabViewEnum
+enum TabViewEnum: Identifiable, CaseIterable {
     var id: Self { self }
 
     case home, vault, favorites, profile
-
+    
     var tabItem: TabItem {
         switch self {
         case .home:
-            .init(
-                name: "Arca",
-                systemImage: "shippingbox.fill",
-                color: .cardDarkBlue
-            )
+            .init(name: "Arca", systemImage: "shippingbox.fill", color: .cardDarkBlue)
         case .vault:
-            .init(
-                name: "Bóveda",
-                systemImage: "lock.shield.fill",
-                color: .cardDarkBlue
-            )
+            .init(name: "Bóveda", systemImage: "lock.shield.fill", color: .cardDarkBlue)
         case .favorites:
-            .init(
-                name: "Favoritos",
-                systemImage: "heart.fill",
-                color: .cardDarkBlue
-            )
+            .init(name: "Favoritos", systemImage: "heart.fill", color: .cardDarkBlue)
         case .profile:
-            .init(
-                name: "Perfil",
-                systemImage: "person.fill",
-                color: .cardDarkBlue
-            )
+            .init(name: "Perfil", systemImage: "person.fill", color: .cardDarkBlue)
         }
     }
-
-    var body: some View {
+    
+    // ✅ Método que retorna la vista con el ViewModel inyectado
+    @ViewBuilder
+    func view(vaultVM: VaultViewModel) -> some View {
         switch self {
         case .home:
             ArkHomeView()
         case .vault:
-            VaultHomeView()
+            VaultHomeView(vm: vaultVM)
         case .favorites:
             ProfileHomeView()
         case .profile:
             ProfileHomeView()
         }
     }
-
 }
 
+// MARK: - CustomTabBar
 struct CustomTabBar: View {
     @Binding var selectedIndex: TabViewEnum
-
+    
     var body: some View {
-        HStack(spacing:30){
+        HStack(spacing: 30) {
             ForEach(TabViewEnum.allCases) { tab in
                 Button {
-                    withAnimation{
+                    withAnimation {
                         selectedIndex = tab
                     }
                 } label: {
@@ -81,10 +62,8 @@ struct CustomTabBar: View {
                         .foregroundColor(.white)
                         .background(tab == selectedIndex ? Color.iconDisableBG : tab.tabItem.color)
                         .clipShape(Circle())
-                    
                 }
                 .disabled(tab == selectedIndex)
-
             }
         }
         .frame(maxWidth: .infinity)
@@ -92,27 +71,44 @@ struct CustomTabBar: View {
         .background(.white.opacity(0.8))
         .clipShape(Capsule())
         .padding()
-
     }
 }
 
-#Preview {
-    @Previewable @State var selectedIndex: TabViewEnum = .home
-    MainBGContainer {
-        VStack {
-            Spacer()
-            CustomTabBar(selectedIndex: $selectedIndex)
+// MARK: - MainTabView
+struct MainTabView: View {
+    @State private var selectedTab: TabViewEnum = .home
+    @StateObject private var vaultVM: VaultViewModel
+    
+    // ✅ Init sin parámetros, usa el shared
+    init() {
+        let supabase = SupabaseClientManager.shared.client
+        let api = SupabaseVaultManager(supabase: supabase)
+        _vaultVM = StateObject(wrappedValue: VaultViewModel(api: api, supabase: supabase))
+    }
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Contenido basado en tab seleccionado
+            Group {
+                switch selectedTab {
+                case .home:
+                    ArkHomeView()
+                case .vault:
+                    VaultHomeView(vm: vaultVM)
+                case .favorites:
+                    ProfileHomeView()
+                case .profile:
+                    ProfileHomeView()
+                }
+            }
+            
+            // Tab bar
+            CustomTabBar(selectedIndex: $selectedTab)
         }
     }
 }
-//ArkHomeView()
-//    .tabItem { Label("Arca", systemImage: "shippingbox.fill") }
-//
-//VaultHomeView()
-//    .tabItem { Label("Bóveda", systemImage: "lock.shield.fill") }
-//
-//ProfileHomeView()
-//    .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
-//ProfileHomeView()
-//    .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
-//}
+
+// MARK: - Preview
+#Preview {
+    MainTabView()
+}

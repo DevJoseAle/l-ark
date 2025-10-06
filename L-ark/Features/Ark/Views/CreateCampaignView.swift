@@ -6,15 +6,27 @@ struct CreateCampaignView: View {
     @StateObject private var viewModel = CreateCampaignViewModel()
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
-    @ObservedObject var homeViewModel: HomeViewModel
+    let homeViewModel: HomeViewModel  
     
-
+    // ✅ Init para crear nueva campaña
+    init(homeViewModel: HomeViewModel) {
+        self.homeViewModel = homeViewModel
+        _viewModel = StateObject(wrappedValue: CreateCampaignViewModel())
+    }
+    
+    // ✅ Init para editar campaña existente
+    init(homeViewModel: HomeViewModel, campaign: Campaign) {
+        self.homeViewModel = homeViewModel
+        _viewModel = StateObject(wrappedValue: CreateCampaignViewModel(editingCampaign: campaign))
+    }
+    
     var body: some View {
         NavigationStack {
             MainBGContainer {
                 ScrollView {
                     VStack(spacing: 24) {
                         basicInfoSection
+                        diagnosisSection
                         imagesSection
                         amountsSection
                         datesSection
@@ -23,6 +35,7 @@ struct CreateCampaignView: View {
                         createButton
                     }
                     .padding()
+                    .padding(.bottom, 70)
                 }
                 .navigationTitle("Crear Campaña")
                 .navigationBarTitleDisplayMode(.large)
@@ -42,6 +55,9 @@ struct CreateCampaignView: View {
                 }
                 .onChange(of: viewModel.campaignCreated) { created in
                     if created { dismiss() }
+                }
+                .onChange(of: viewModel.selectedDiagnosisImages) { _ in
+                    Task { await viewModel.loadSelectedDiagnosisImages() }
                 }
                 .overlay {
                     if viewModel.isCreating {
@@ -77,6 +93,40 @@ struct CreateCampaignView: View {
             
             loadingContent
         }
+    }
+    private var diagnosisSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Image(systemName: "stethoscope")
+                    .foregroundStyle(.blue)
+                
+                Text("¿Tienes algún diagnóstico médico?")
+                    .font(.system(size: 15, weight: .semibold))
+                
+                Spacer()
+                
+                Toggle("", isOn: $viewModel.hasDiagnosis)
+            }
+            
+            if viewModel.hasDiagnosis {
+                VStack(spacing: 12) {
+                    Text("Agrega hasta 3 fotos de documentos médicos")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    ImagePickerCard(
+                        selectedImages: $viewModel.selectedDiagnosisImages,
+                        images: viewModel.diagnosisImages,
+                        onRemove: { index in
+                            viewModel.removeDiagnosisImage(at: index)
+                        },
+                        title: "Imágenes de tu Diagnóstico"
+                    )
+                }
+            }
+        }
+        .cardStyle()
     }
     
     private var loadingContent: some View {
@@ -122,7 +172,8 @@ struct CreateCampaignView: View {
                 images: viewModel.campaignImages,
                 onRemove: { index in
                     viewModel.removeImage(at: index)
-                }
+                },
+                title: "Imágenes de la Campaña"
             )
         }
         .cardStyle()
@@ -149,14 +200,14 @@ struct CreateCampaignView: View {
     private var capsSection: some View {
         HStack(spacing: 12) {
             CustomTextField(
-                title: "Soft Cap",
+                title: "Meta Minima",
                 placeholder: "500000",
                 text: $viewModel.softCap,
                 keyboardType: .numberPad
             )
             
             CustomTextField(
-                title: "Hard Cap",
+                title: "Meta Media",
                 placeholder: "2000000",
                 text: $viewModel.hardCap,
                 keyboardType: .numberPad
@@ -171,8 +222,6 @@ struct CreateCampaignView: View {
             
             Picker("Moneda", selection: $viewModel.currency) {
                 Text("CLP - Peso Chileno").tag("CLP")
-                Text("USD - Dólar").tag("USD")
-                Text("EUR - Euro").tag("EUR")
             }
             .pickerStyle(.segmented)
         }
@@ -180,7 +229,7 @@ struct CreateCampaignView: View {
     
     private var datesSection: some View {
         VStack(spacing: 16) {
-            sectionTitle("Fechas")
+            sectionTitle("Fechas: ")
             
             DatePicker(
                 "Fecha de inicio",
@@ -216,8 +265,8 @@ struct CreateCampaignView: View {
             
             Picker("Visibilidad", selection: $viewModel.visibility) {
                 Text("Pública").tag(CampaignVisibility.publicCampaign)
-                Text("No listada").tag(CampaignVisibility.unlisted)
-                Text("Privada").tag(CampaignVisibility.privateCampaign)
+//                Text("No listada").tag(CampaignVisibility.unlisted)
+//                Text("Privada").tag(CampaignVisibility.privateCampaign)
             }
             .pickerStyle(.segmented)
         }
@@ -230,8 +279,8 @@ struct CreateCampaignView: View {
             
             Picker("Regla", selection: $viewModel.beneficiaryRule) {
                 Text("Partes fijas").tag(BeneficiaryRule.fixedShares)
-                Text("Prioridad").tag(BeneficiaryRule.priority)
-                Text("Un beneficiario").tag(BeneficiaryRule.singleBeneficiary)
+//                Text("Prioridad").tag(BeneficiaryRule.priority)
+//                Text("Un beneficiario").tag(BeneficiaryRule.singleBeneficiary)
             }
             .pickerStyle(.segmented)
         }
@@ -301,14 +350,34 @@ struct CreateCampaignView: View {
     private var createButton: some View {
         Button {
             Task {
-                await viewModel.createCampaign(
-                    ownerUserId: appState.currentUser!.id,
-                    homeViewModel: homeViewModel,
-                    appState: appState
-                )
+                if viewModel.isEditMode {
+                    await viewModel.updateCampaign(
+                        homeViewModel: homeViewModel,
+                        appState: appState
+                    )
+                } else {
+                    await viewModel.createCampaign(
+                        ownerUserId: appState.currentUser!.id,
+                        homeViewModel: homeViewModel,
+                        appState: appState
+                    )
+                }
             }
         } label: {
-            createButtonLabel
+            HStack {
+                if viewModel.isCreating {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Text(viewModel.isEditMode ? "Actualizar Campaña" : "Crear Campaña")
+                        .font(.system(size: 17, weight: .semibold))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(viewModel.isFormValid ? Color.blue : Color.gray)
+            .foregroundColor(.white)
+            .cornerRadius(16)
         }
         .disabled(!viewModel.isFormValid || viewModel.isCreating)
     }
