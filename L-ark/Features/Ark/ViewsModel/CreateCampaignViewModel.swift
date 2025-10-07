@@ -38,7 +38,7 @@ class CreateCampaignViewModel: ObservableObject {
     @Published var diagnosisImages: [DocumentUpload] = []
     private let service = SupabaseCampaignManager()
     private var searchTask: Task<Void, Never>?
-    
+    @Published var hasExistingImages = false
     
     private var editingCampaignId: UUID?
     var isEditMode: Bool { editingCampaignId != nil }
@@ -51,6 +51,8 @@ class CreateCampaignViewModel: ObservableObject {
        // ✅ Init para edición
 
     init(editingCampaign: Campaign) {
+        
+        
         self.editingCampaignId = editingCampaign.id
         
         // Cargar datos existentes
@@ -82,15 +84,46 @@ class CreateCampaignViewModel: ObservableObject {
         
         // Cargar imágenes y beneficiarios en Task
         Task {
-            await loadExistingData(campaignId: editingCampaign.id)
-        }
+                await loadExistingData(campaignId: editingCampaign.id)
+                // Marcar que hay imágenes existentes
+                await MainActor.run {
+                    self.hasExistingImages = !self.campaignImages.isEmpty
+                }
+            }
     }
     //MARK: LoadExistingData
     private func loadExistingData(campaignId: UUID) async {
         // Cargar imágenes de campaña
         do {
             try await service.getImagesFromCampaign(campaignId.uuidString)
-            // Las imágenes ya están en service.images, no necesitas hacer nada más
+            
+            // 🔥 NUEVA LÓGICA: Convertir CampaignImage a DocumentUpload
+            let loadedImages = service.images
+            var documentUploads: [DocumentUpload] = []
+            
+            for (index, campaignImage) in loadedImages.enumerated() {
+                do {
+                    // Descargar la imagen desde la URL
+                    let imageData = try await service.downloadImageData(from: campaignImage.imageUrl)
+                    
+                    // Crear DocumentUpload con los datos descargados
+                    let document = DocumentUpload(
+                        data: imageData,
+                        fileName: "image_\(index).jpg",
+                        mimeType: "image/jpeg"
+                    )
+                    documentUploads.append(document)
+                } catch {
+                    print("Error descargando imagen \(index): \(error)")
+                    // Continuar con las demás imágenes
+                }
+            }
+            
+            // Actualizar en el MainActor
+            await MainActor.run {
+                self.campaignImages = documentUploads
+            }
+            
         } catch {
             print("Error cargando imágenes: \(error)")
         }
@@ -99,13 +132,12 @@ class CreateCampaignViewModel: ObservableObject {
         do {
             let beneficiariesData = try await service.getBeneficiariesForCampaign(campaignId: campaignId)
             
-            // Convertir a BeneficiaryDraft
             await MainActor.run {
                 self.beneficiaries = beneficiariesData.compactMap { beneficiary in
                     guard let user = beneficiary.user else { return nil }
                     
                     let shareType = BeneficiaryShareType(rawValue: beneficiary.shareType.rawValue) ?? .percent
-                    
+                        
                     return BeneficiaryDraft(
                         email: user.email,
                         user: user,

@@ -167,14 +167,26 @@ struct CreateCampaignView: View {
     
     private var imagesSection: some View {
         VStack(spacing: 16) {
-            ImagePickerCard(
-                selectedImages: $viewModel.selectedImages,
-                images: viewModel.campaignImages,
-                onRemove: { index in
-                    viewModel.removeImage(at: index)
-                },
-                title: "Imágenes de la Campaña"
-            )
+            HStack {
+                ImagePickerCard(
+                    selectedImages: $viewModel.selectedImages,
+                    images: viewModel.campaignImages,
+                    onRemove: { index in
+                        viewModel.removeImage(at: index)
+                    },
+                    title: "Imágenes de la Campaña"
+                )
+            }
+            
+            // Botón opcional para limpiar todas las imágenes existentes
+            if viewModel.isEditMode && viewModel.hasExistingImages && !viewModel.campaignImages.isEmpty {
+                Button("Eliminar todas las imágenes actuales") {
+                    viewModel.campaignImages.removeAll()
+                    viewModel.hasExistingImages = false
+                }
+                .font(.caption)
+                .foregroundColor(.red)
+            }
         }
         .cardStyle()
     }

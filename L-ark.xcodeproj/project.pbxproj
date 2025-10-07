@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CC86B12B2E945BCF001FFE6E /* Products.storekit in Resources */ = {isa = PBXBuildFile; fileRef = CC86B12A2E945BCF001FFE6E /* Products.storekit */; };
 		CCFCA6F82E6F29B300D3E6B0 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = CCFCA6F72E6F29B300D3E6B0 /* Auth */; };
 		CCFCA6FA2E6F29B300D3E6B0 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = CCFCA6F92E6F29B300D3E6B0 /* Functions */; };
 		CCFCA6FC2E6F29B300D3E6B0 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = CCFCA6FB2E6F29B300D3E6B0 /* PostgREST */; };
@@ -36,6 +37,7 @@
 		CC7322632E5CF9E20018B764 /* L-ark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "L-ark.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC7322722E5CF9E40018B764 /* L-arkTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "L-arkTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC73227C2E5CF9E40018B764 /* L-arkUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "L-arkUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC86B12A2E945BCF001FFE6E /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -108,6 +110,7 @@
 		CC73225A2E5CF9E20018B764 = {
 			isa = PBXGroup;
 			children = (
+				CC86B12A2E945BCF001FFE6E /* Products.storekit */,
 				CC7322652E5CF9E20018B764 /* L-ark */,
 				CC7322752E5CF9E40018B764 /* L-arkTests */,
 				CC73227F2E5CF9E40018B764 /* L-arkUITests */,
@@ -256,6 +259,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CC86B12B2E945BCF001FFE6E /* Products.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -446,12 +450,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9PHGC8F3YA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "L-ark/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "L-ark";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -465,6 +471,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.joseRodriguez.L-ark";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -478,12 +485,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9PHGC8F3YA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "L-ark/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "L-ark";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -497,6 +506,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.joseRodriguez.L-ark";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

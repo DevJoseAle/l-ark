@@ -578,5 +578,19 @@ final class SupabaseCampaignManager: ObservableObject {
             throw CampaignError.uploadFailed("Diagnóstico \(document.fileName): \(error.localizedDescription)")
         }
     }
+    func downloadImageData(from urlString: String) async throws -> Data {
+        guard let url = URL(string: urlString) else {
+            throw CampaignError.imgFailed
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw CampaignError.imgFailed
+        }
+        
+        return data
+    }
 }
 
